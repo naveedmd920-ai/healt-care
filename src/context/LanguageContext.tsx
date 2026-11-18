@@ -1,33 +1,34 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { SupportedLanguage, translations } from '../translations';
-import type { TranslationDict } from '../translations/en';
+import { I18nextProvider, useTranslation } from 'react-i18next';
+import i18n, { LANG_STORAGE_KEY, SupportedLanguage, getStoredLanguage } from '../i18n';
 import { api, TOKEN_STORAGE_KEY } from '../services/api';
 
-const LANG_STORAGE_KEY = 'rhc_language';
+export type { SupportedLanguage };
 
 interface LanguageContextValue {
   lang: SupportedLanguage;
-  t: TranslationDict;
   setLanguage: (next: SupportedLanguage, syncServer?: boolean) => Promise<void>;
 }
 
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<SupportedLanguage>(() => {
-    const saved = localStorage.getItem(LANG_STORAGE_KEY);
-    if (saved === 'en' || saved === 'te' || saved === 'hi') return saved;
-    return 'en';
-  });
+  const [lang, setLang] = useState<SupportedLanguage>(() => getStoredLanguage());
 
   useEffect(() => {
     document.documentElement.lang = lang;
     localStorage.setItem(LANG_STORAGE_KEY, lang);
+    if (i18n.language !== lang) {
+      i18n.changeLanguage(lang);
+    }
   }, [lang]);
 
   const setLanguage = async (next: SupportedLanguage, syncServer = true) => {
     setLang(next);
+    document.documentElement.lang = next;
     localStorage.setItem(LANG_STORAGE_KEY, next);
+    await i18n.changeLanguage(next);
+
     if (syncServer && localStorage.getItem(TOKEN_STORAGE_KEY)) {
       try {
         await api.put('/user/language', { language: next });
@@ -38,14 +39,23 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <LanguageContext.Provider value={{ lang, t: translations[lang], setLanguage }}>
-      {children}
-    </LanguageContext.Provider>
+    <I18nextProvider i18n={i18n}>
+      <LanguageContext.Provider value={{ lang, setLanguage }}>
+        {children}
+      </LanguageContext.Provider>
+    </I18nextProvider>
   );
 }
 
-export function useLanguage(): LanguageContextValue {
+export function useLanguage() {
   const ctx = useContext(LanguageContext);
+  const { t, i18n: i18nInstance, ready } = useTranslation();
   if (!ctx) throw new Error('useLanguage must be used within LanguageProvider');
-  return ctx;
+  return {
+    lang: ctx.lang,
+    setLanguage: ctx.setLanguage,
+    t,
+    i18n: i18nInstance,
+    ready,
+  };
 }

@@ -4,12 +4,15 @@ import { db } from '../config/db.ts';
 import { AuthRequest } from '../middleware/auth.ts';
 import { sqlNow } from '../utils/crypto.ts';
 
+const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
 export async function listDoctors(req: Request, res: Response): Promise<void> {
   try {
     const search = String(req.query.search || '').trim().toLowerCase();
     const specialization = String(req.query.specialization || '').trim();
     const language = String(req.query.language || '').trim().toLowerCase();
-    const maxFee = req.query.maxFee ? Number(req.query.maxFee) : null;
+    const maxFeeRaw = req.query.maxFee !== undefined ? String(req.query.maxFee).trim() : '';
+    const maxFee = maxFeeRaw !== '' ? Number(maxFeeRaw) : null;
     const day = String(req.query.day || '').trim();
     const sort = String(req.query.sort || 'fee_asc');
 
@@ -34,40 +37,51 @@ export async function listDoctors(req: Request, res: Response): Promise<void> {
       availMap.set(av.doctor_id, list);
     }
 
-    let filtered = rows.map((doc) => ({
-      ...doc,
-      availability: availMap.get(doc.id) || [],
-    }));
+    let filtered = rows.map((doc) => {
+      const docAvail = (availMap.get(doc.id) || []).sort(
+        (a, b) => DAY_ORDER.indexOf(a.day_of_week) - DAY_ORDER.indexOf(b.day_of_week)
+      );
+      return {
+        ...doc,
+        availability: docAvail,
+      };
+    });
 
     if (search) {
       filtered = filtered.filter(
         (d) =>
-          d.full_name.toLowerCase().includes(search) ||
-          d.specialization.toLowerCase().includes(search) ||
-          (d.clinic_location || '').toLowerCase().includes(search)
+          (d.full_name || '').toLowerCase().includes(search) ||
+          (d.specialization || '').toLowerCase().includes(search) ||
+          (d.qualification || '').toLowerCase().includes(search) ||
+          (d.clinic_location || '').toLowerCase().includes(search) ||
+          (d.languages_spoken || '').toLowerCase().includes(search)
       );
     }
     if (specialization && specialization !== 'all') {
       filtered = filtered.filter((d) => d.specialization.toLowerCase() === specialization.toLowerCase());
     }
     if (language && language !== 'all') {
-      filtered = filtered.filter((d) => d.languages_spoken.toLowerCase().includes(language));
+      filtered = filtered.filter((d) => (d.languages_spoken || '').toLowerCase().includes(language));
     }
-    if (maxFee !== null && !Number.isNaN(maxFee)) {
-      filtered = filtered.filter((d) => d.consultation_fee <= maxFee);
+    if (maxFee !== null && !Number.isNaN(maxFee) && maxFee >= 0) {
+      filtered = filtered.filter((d) => Number(d.consultation_fee) <= maxFee);
     }
     if (day && day !== 'all') {
-      filtered = filtered.filter((d) =>
-        d.availability.some((a: any) => a.day_of_week.toLowerCase() === day.toLowerCase())
-      );
+      if (day === 'available_only') {
+        filtered = filtered.filter((d) => d.availability.length > 0);
+      } else {
+        filtered = filtered.filter((d) =>
+          d.availability.some((a: any) => a.day_of_week.toLowerCase() === day.toLowerCase())
+        );
+      }
     }
 
     if (sort === 'fee_desc') {
-      filtered.sort((a, b) => b.consultation_fee - a.consultation_fee);
+      filtered.sort((a, b) => Number(b.consultation_fee) - Number(a.consultation_fee));
     } else if (sort === 'experience_desc') {
-      filtered.sort((a, b) => b.experience_years - a.experience_years);
+      filtered.sort((a, b) => Number(b.experience_years) - Number(a.experience_years));
     } else {
-      filtered.sort((a, b) => a.consultation_fee - b.consultation_fee);
+      filtered.sort((a, b) => Number(a.consultation_fee) - Number(b.consultation_fee));
     }
 
     res.json({ doctors: filtered });

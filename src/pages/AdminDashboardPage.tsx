@@ -12,9 +12,12 @@ import {
   Search,
 } from 'lucide-react';
 import { DashboardShell, SidebarNavItem } from '../components/DashboardShell';
+import { useLanguage } from '../context/LanguageContext';
 import { api, getApiErrorMessage } from '../services/api';
+import { translateEnum } from '../utils/i18nHelpers';
 
 export function AdminDashboardPage() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('overview');
   const [overview, setOverview] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
@@ -27,12 +30,10 @@ export function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
 
-  // Search filters
   const [doctorQuery, setDoctorQuery] = useState('');
   const [userQuery, setUserQuery] = useState('');
   const [apptQuery, setApptQuery] = useState('');
 
-  // Edit IDs
   const [editingHospitalId, setEditingHospitalId] = useState<number | null>(null);
   const [editingArticleId, setEditingArticleId] = useState<number | null>(null);
 
@@ -77,7 +78,7 @@ export function AdminDashboardPage() {
       setHospitals(ho.data.hospitals || []);
       setArticles(ar.data.articles || []);
     } catch (err) {
-      setMsg(getApiErrorMessage(err));
+      setMsg(getApiErrorMessage(err, t('common.genericError')));
     } finally {
       setLoading(false);
     }
@@ -94,10 +95,15 @@ export function AdminDashboardPage() {
         decision,
         reviewNotes: decision === 'verified' ? 'Verified by Administrator' : 'Verification declined',
       });
-      setMsg(`Doctor #${doctorId} marked as ${decision}.`);
+      setMsg(
+        t('dashboards.adminDash.doctorMarked', {
+          id: doctorId,
+          decision: translateEnum(t, 'status', decision),
+        })
+      );
       await loadAllAdminData();
     } catch (err) {
-      setMsg(getApiErrorMessage(err));
+      setMsg(getApiErrorMessage(err, t('common.genericError')));
     }
   };
 
@@ -108,7 +114,7 @@ export function AdminDashboardPage() {
       setMsg(res.data.message);
       await loadAllAdminData();
     } catch (err) {
-      setMsg(getApiErrorMessage(err));
+      setMsg(getApiErrorMessage(err, t('common.genericError')));
     }
   };
 
@@ -134,15 +140,15 @@ export function AdminDashboardPage() {
     try {
       if (editingHospitalId) {
         await api.put(`/admin/hospitals/${editingHospitalId}`, hospitalForm);
-        setMsg(`Hospital #${editingHospitalId} updated.`);
+        setMsg(t('dashboards.adminDash.hospitalUpdated', { id: editingHospitalId }));
       } else {
         await api.post('/admin/hospitals', { ...hospitalForm, is_sample: true });
-        setMsg('Hospital added to directory.');
+        setMsg(t('dashboards.adminDash.hospitalAdded'));
       }
       resetHospitalForm();
       await loadAllAdminData();
     } catch (err) {
-      setMsg(getApiErrorMessage(err));
+      setMsg(getApiErrorMessage(err, t('common.genericError')));
     }
   };
 
@@ -166,10 +172,10 @@ export function AdminDashboardPage() {
     try {
       await api.delete(`/admin/hospitals/${id}`);
       if (editingHospitalId === id) resetHospitalForm();
-      setMsg('Hospital deleted.');
+      setMsg(t('dashboards.adminDash.hospitalDeleted'));
       await loadAllAdminData();
     } catch (err) {
-      setMsg(getApiErrorMessage(err));
+      setMsg(getApiErrorMessage(err, t('common.genericError')));
     }
   };
 
@@ -190,15 +196,15 @@ export function AdminDashboardPage() {
     try {
       if (editingArticleId) {
         await api.put(`/admin/articles/${editingArticleId}`, articleForm);
-        setMsg(`Article #${editingArticleId} updated.`);
+        setMsg(t('dashboards.adminDash.articleUpdated', { id: editingArticleId }));
       } else {
         await api.post('/admin/articles', articleForm);
-        setMsg('Health article published.');
+        setMsg(t('dashboards.adminDash.articlePublished'));
       }
       resetArticleForm();
       await loadAllAdminData();
     } catch (err) {
-      setMsg(getApiErrorMessage(err));
+      setMsg(getApiErrorMessage(err, t('common.genericError')));
     }
   };
 
@@ -217,10 +223,10 @@ export function AdminDashboardPage() {
     try {
       await api.delete(`/admin/articles/${id}`);
       if (editingArticleId === id) resetArticleForm();
-      setMsg('Article deleted.');
+      setMsg(t('dashboards.adminDash.articleDeleted'));
       await loadAllAdminData();
     } catch (err) {
-      setMsg(getApiErrorMessage(err));
+      setMsg(getApiErrorMessage(err, t('common.genericError')));
     }
   };
 
@@ -228,10 +234,15 @@ export function AdminDashboardPage() {
     setMsg('');
     try {
       await api.patch(`/admin/appointments/${id}/status`, { status });
-      setMsg(`Appointment #${id} status updated to ${status}.`);
+      setMsg(
+        t('dashboards.adminDash.apptStatusUpdated', {
+          id,
+          status: translateEnum(t, 'status', status),
+        })
+      );
       await loadAllAdminData();
     } catch (err) {
-      setMsg(getApiErrorMessage(err));
+      setMsg(getApiErrorMessage(err, t('common.genericError')));
     }
   };
 
@@ -270,30 +281,54 @@ export function AdminDashboardPage() {
   const pendingDocsCount = overview?.stats?.pendingDoctorVerifications || 0;
 
   const navItems: SidebarNavItem[] = [
-    { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
+    {
+      id: 'overview',
+      label: t('dashboards.adminDash.tabOverview'),
+      icon: <LayoutDashboard className="w-4 h-4" />,
+    },
     {
       id: 'doctors',
-      label: 'Doctors & Approvals',
+      label: t('dashboards.adminDash.tabDoctors'),
       icon: <Stethoscope className="w-4 h-4" />,
       badgeCount: pendingDocsCount,
     },
-    { id: 'users', label: 'Manage Users', icon: <Users className="w-4 h-4" /> },
-    { id: 'appointments', label: 'Appointments', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'payments', label: 'Payment Records', icon: <CreditCard className="w-4 h-4" /> },
-    { id: 'hospitals', label: 'Hospitals', icon: <Building2 className="w-4 h-4" /> },
-    { id: 'articles', label: 'Health Articles', icon: <BookOpen className="w-4 h-4" /> },
+    {
+      id: 'users',
+      label: t('dashboards.adminDash.tabUsers'),
+      icon: <Users className="w-4 h-4" />,
+    },
+    {
+      id: 'appointments',
+      label: t('dashboards.adminDash.tabAppointments'),
+      icon: <Calendar className="w-4 h-4" />,
+    },
+    {
+      id: 'payments',
+      label: t('dashboards.adminDash.tabPayments'),
+      icon: <CreditCard className="w-4 h-4" />,
+    },
+    {
+      id: 'hospitals',
+      label: t('dashboards.adminDash.tabHospitals'),
+      icon: <Building2 className="w-4 h-4" />,
+    },
+    {
+      id: 'articles',
+      label: t('dashboards.adminDash.tabArticles'),
+      icon: <BookOpen className="w-4 h-4" />,
+    },
   ];
 
   return (
     <DashboardShell
-      portalLabel="Administrator Portal"
+      portalLabel={t('dashboards.adminPortal')}
       items={navItems}
       activeTab={activeTab}
       onSelectTab={setActiveTab}
     >
       {loading ? (
         <div className="p-8 bg-white rounded-xl border border-emerald-950/10 text-sm text-slate-600">
-          Loading administrator console...
+          {t('dashboards.adminDash.loading')}
         </div>
       ) : (
         <div className="space-y-6">
@@ -307,26 +342,32 @@ export function AdminDashboardPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="p-5 bg-white border border-emerald-950/10 rounded-xl">
-                  <div className="text-xs text-slate-500">Registered Patients</div>
+                  <div className="text-xs text-slate-500">
+                    {t('dashboards.adminDash.registeredPatients')}
+                  </div>
                   <div className="text-2xl font-display font-bold font-mono tabular-nums text-slate-950 mt-1">
                     {overview.stats.totalPatients}
                   </div>
                 </div>
                 <div className="p-5 bg-white border border-emerald-950/10 rounded-xl">
-                  <div className="text-xs text-slate-500">Registered Doctors</div>
+                  <div className="text-xs text-slate-500">
+                    {t('dashboards.adminDash.registeredDoctors')}
+                  </div>
                   <div className="text-2xl font-display font-bold font-mono tabular-nums text-emerald-800 mt-1">
                     {overview.stats.totalDoctors}
                   </div>
                 </div>
                 <div className="p-5 bg-white border border-emerald-950/10 rounded-xl">
-                  <div className="text-xs text-slate-500">Pending Doctor Approvals</div>
+                  <div className="text-xs text-slate-500">
+                    {t('dashboards.adminDash.pendingApprovals')}
+                  </div>
                   <div className="text-2xl font-display font-bold font-mono tabular-nums text-amber-700 mt-1">
                     {overview.stats.pendingDoctorVerifications}
                   </div>
                 </div>
                 <div className="p-5 bg-white border border-emerald-950/10 rounded-xl">
                   <div className="text-xs text-slate-500">
-                    Consultation Revenue / Direct Cost
+                    {t('dashboards.adminDash.revenueOpCost')}
                   </div>
                   <div className="text-xl font-display font-bold font-mono tabular-nums text-slate-950 mt-1">
                     ₹{overview.stats.totalRevenue} / ₹{overview.stats.totalOperatingCost}
@@ -336,11 +377,15 @@ export function AdminDashboardPage() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white border border-emerald-950/10 rounded-xl p-5 space-y-3">
-                  <h2 className="text-base font-bold text-slate-900">Appointment Statistics</h2>
+                  <h2 className="text-base font-bold text-slate-900">
+                    {t('dashboards.adminDash.appointmentStats')}
+                  </h2>
                   <div className="divide-y divide-emerald-950/10 text-sm">
                     {overview.stats.appointmentsByStatus.map((row: any) => (
                       <div key={row.status} className="py-2.5 flex justify-between">
-                        <span className="capitalize text-slate-700">{row.status}</span>
+                        <span className="text-slate-700">
+                          {translateEnum(t, 'status', row.status)}
+                        </span>
                         <span className="font-mono tabular-nums font-bold text-slate-900">
                           {row.count}
                         </span>
@@ -350,10 +395,14 @@ export function AdminDashboardPage() {
                 </div>
 
                 <div className="bg-white border border-emerald-950/10 rounded-xl p-5 space-y-3">
-                  <h2 className="text-base font-bold text-slate-900">Recent Platform Activity</h2>
+                  <h2 className="text-base font-bold text-slate-900">
+                    {t('dashboards.adminDash.recentActivity')}
+                  </h2>
                   <div className="space-y-2 max-h-64 overflow-y-auto text-xs">
                     {overview.recentActivity.length === 0 ? (
-                      <p className="text-slate-500">No recent activity alerts.</p>
+                      <p className="text-slate-500">
+                        {t('dashboards.adminDash.noRecentActivity')}
+                      </p>
                     ) : (
                       overview.recentActivity.map((act: any) => (
                         <div
@@ -375,7 +424,7 @@ export function AdminDashboardPage() {
             <div className="bg-white border border-emerald-950/10 rounded-xl p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <h1 className="text-xl font-display font-bold text-slate-950">
-                  Doctor Verification & Management
+                  {t('dashboards.adminDash.doctorVerificationHeading')}
                 </h1>
                 <div className="relative w-full sm:w-64">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -383,7 +432,7 @@ export function AdminDashboardPage() {
                     type="text"
                     value={doctorQuery}
                     onChange={(e) => setDoctorQuery(e.target.value)}
-                    placeholder="Filter doctors..."
+                    placeholder={t('dashboards.adminDash.filterDoctorsPlaceholder')}
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                   />
                 </div>
@@ -396,16 +445,17 @@ export function AdminDashboardPage() {
                   >
                     <div className="space-y-1">
                       <div className="text-sm font-bold text-slate-900">
-                        {d.full_name} · {d.specialization}
+                        {d.full_name} · {translateEnum(t, 'specialization', d.specialization)}
                       </div>
                       <div className="text-xs text-slate-600">
-                        {d.qualification} · {d.experience_years} yrs · Reg:{' '}
-                        <span className="font-mono">{d.registration_number || 'N/A'}</span>
+                        {d.qualification} · {d.experience_years} {t('common.yrs')} ·{' '}
+                        {t('dashboards.doctorDash.regLabel')}:{' '}
+                        <span className="font-mono">{d.registration_number || t('common.na')}</span>
                       </div>
                       <div className="text-xs">
-                        Status:{' '}
+                        {t('dashboards.statusLabel')}:{' '}
                         <span
-                          className={`uppercase font-mono font-semibold ${
+                          className={`font-mono font-semibold ${
                             d.verification_status === 'verified'
                               ? 'text-emerald-800'
                               : d.verification_status === 'rejected'
@@ -413,7 +463,7 @@ export function AdminDashboardPage() {
                               : 'text-amber-700'
                           }`}
                         >
-                          {d.verification_status}
+                          {translateEnum(t, 'status', d.verification_status)}
                         </span>
                       </div>
                     </div>
@@ -424,7 +474,7 @@ export function AdminDashboardPage() {
                           onClick={() => handleVerifyDoctor(d.id, 'verified')}
                           className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg cursor-pointer"
                         >
-                          Approve
+                          {t('dashboards.adminDash.approve')}
                         </button>
                       )}
                       {d.verification_status !== 'rejected' && (
@@ -433,7 +483,7 @@ export function AdminDashboardPage() {
                           onClick={() => handleVerifyDoctor(d.id, 'rejected')}
                           className="px-3.5 py-1.5 text-xs font-semibold text-red-700 bg-white border border-red-200 hover:bg-red-50 rounded-lg cursor-pointer"
                         >
-                          Reject
+                          {t('dashboards.adminDash.reject')}
                         </button>
                       )}
                     </div>
@@ -446,14 +496,16 @@ export function AdminDashboardPage() {
           {activeTab === 'users' && (
             <div className="bg-white border border-emerald-950/10 rounded-xl p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h1 className="text-xl font-display font-bold text-slate-950">Manage Users</h1>
+                <h1 className="text-xl font-display font-bold text-slate-950">
+                  {t('dashboards.adminDash.tabUsers')}
+                </h1>
                 <div className="relative w-full sm:w-64">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={userQuery}
                     onChange={(e) => setUserQuery(e.target.value)}
-                    placeholder="Search name, email, role..."
+                    placeholder={t('dashboards.adminDash.searchUsersPlaceholder')}
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                   />
                 </div>
@@ -462,12 +514,12 @@ export function AdminDashboardPage() {
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-emerald-950/10 text-slate-500">
                     <tr>
-                      <th className="py-2.5 pr-4">Name</th>
-                      <th className="py-2.5 pr-4">Email</th>
-                      <th className="py-2.5 pr-4">Role</th>
-                      <th className="py-2.5 pr-4">Village</th>
-                      <th className="py-2.5 pr-4">Status</th>
-                      <th className="py-2.5 text-right">Action</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.name')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.email')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.role')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.village')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.status')}</th>
+                      <th className="py-2.5 text-right">{t('dashboards.table.action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-950/10">
@@ -475,9 +527,13 @@ export function AdminDashboardPage() {
                       <tr key={u.id}>
                         <td className="py-2.5 pr-4 font-medium text-slate-900">{u.full_name}</td>
                         <td className="py-2.5 pr-4 font-mono">{u.email}</td>
-                        <td className="py-2.5 pr-4 uppercase">{u.role}</td>
+                        <td className="py-2.5 pr-4">{translateEnum(t, 'role', u.role)}</td>
                         <td className="py-2.5 pr-4">{u.village_town || '—'}</td>
-                        <td className="py-2.5 pr-4">{u.is_active ? 'Active' : 'Disabled'}</td>
+                        <td className="py-2.5 pr-4">
+                          {u.is_active
+                            ? translateEnum(t, 'status', 'active')
+                            : translateEnum(t, 'status', 'disabled')}
+                        </td>
                         <td className="py-2.5 text-right">
                           {u.role !== 'admin' && (
                             <button
@@ -485,7 +541,9 @@ export function AdminDashboardPage() {
                               onClick={() => handleToggleUser(u.id)}
                               className="px-2.5 py-1 text-xs font-medium border border-emerald-950/15 rounded hover:bg-slate-50 cursor-pointer"
                             >
-                              {u.is_active ? 'Deactivate' : 'Activate'}
+                              {u.is_active
+                                ? t('dashboards.adminDash.deactivate')
+                                : t('dashboards.adminDash.activate')}
                             </button>
                           )}
                         </td>
@@ -500,14 +558,16 @@ export function AdminDashboardPage() {
           {activeTab === 'appointments' && (
             <div className="bg-white border border-emerald-950/10 rounded-xl p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h1 className="text-xl font-display font-bold text-slate-950">All Appointments</h1>
+                <h1 className="text-xl font-display font-bold text-slate-950">
+                  {t('dashboards.adminDash.allAppointments')}
+                </h1>
                 <div className="relative w-full sm:w-64">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={apptQuery}
                     onChange={(e) => setApptQuery(e.target.value)}
-                    placeholder="Search patient, doctor, status..."
+                    placeholder={t('dashboards.adminDash.searchApptsPlaceholder')}
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                   />
                 </div>
@@ -516,12 +576,12 @@ export function AdminDashboardPage() {
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-emerald-950/10 text-slate-500">
                     <tr>
-                      <th className="py-2.5 pr-4">ID</th>
-                      <th className="py-2.5 pr-4">Patient</th>
-                      <th className="py-2.5 pr-4">Doctor</th>
-                      <th className="py-2.5 pr-4">Date & Slot</th>
-                      <th className="py-2.5 pr-4">Status</th>
-                      <th className="py-2.5 text-right">Fee</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.id')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.patient')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.doctor')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.dateSlot')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.status')}</th>
+                      <th className="py-2.5 text-right">{t('dashboards.table.fee')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-950/10">
@@ -537,13 +597,19 @@ export function AdminDashboardPage() {
                           <select
                             value={a.status}
                             onChange={(e) => handleUpdateAppointmentStatus(a.id, e.target.value)}
-                            className="px-2 py-1 text-xs rounded border border-emerald-950/15 bg-[#F8FAF9] uppercase font-semibold"
-                            aria-label={`Status for appointment ${a.id}`}
+                            className="px-2 py-1 text-xs rounded border border-emerald-950/15 bg-[#F8FAF9] font-semibold"
+                            aria-label={`#${a.id}`}
                           >
-                            <option value="pending">pending</option>
-                            <option value="confirmed">confirmed</option>
-                            <option value="completed">completed</option>
-                            <option value="cancelled">cancelled</option>
+                            <option value="pending">{translateEnum(t, 'status', 'pending')}</option>
+                            <option value="confirmed">
+                              {translateEnum(t, 'status', 'confirmed')}
+                            </option>
+                            <option value="completed">
+                              {translateEnum(t, 'status', 'completed')}
+                            </option>
+                            <option value="cancelled">
+                              {translateEnum(t, 'status', 'cancelled')}
+                            </option>
                           </select>
                         </td>
                         <td className="py-2.5 text-right font-mono tabular-nums">
@@ -559,18 +625,20 @@ export function AdminDashboardPage() {
 
           {activeTab === 'payments' && (
             <div className="bg-white border border-emerald-950/10 rounded-xl p-6 space-y-4">
-              <h1 className="text-xl font-display font-bold text-slate-950">Payment Records</h1>
+              <h1 className="text-xl font-display font-bold text-slate-950">
+                {t('dashboards.adminDash.tabPayments')}
+              </h1>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-emerald-950/10 text-slate-500">
                     <tr>
-                      <th className="py-2.5 pr-4">Ref</th>
-                      <th className="py-2.5 pr-4">Patient</th>
-                      <th className="py-2.5 pr-4">Doctor</th>
-                      <th className="py-2.5 pr-4">Mode</th>
-                      <th className="py-2.5 pr-4">Status</th>
-                      <th className="py-2.5 pr-4 text-right">Fee</th>
-                      <th className="py-2.5 text-right">Op. Cost</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.ref')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.patient')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.doctor')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.mode')}</th>
+                      <th className="py-2.5 pr-4">{t('dashboards.table.status')}</th>
+                      <th className="py-2.5 pr-4 text-right">{t('dashboards.table.fee')}</th>
+                      <th className="py-2.5 text-right">{t('dashboards.table.opCost')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-950/10">
@@ -582,8 +650,12 @@ export function AdminDashboardPage() {
                         <td className="py-2.5 pr-4">
                           {p.payment_method} ({p.gateway_mode})
                         </td>
-                        <td className="py-2.5 pr-4 uppercase font-semibold">{p.status}</td>
-                        <td className="py-2.5 pr-4 text-right font-mono tabular-nums">₹{p.amount}</td>
+                        <td className="py-2.5 pr-4 font-semibold">
+                          {translateEnum(t, 'status', p.status)}
+                        </td>
+                        <td className="py-2.5 pr-4 text-right font-mono tabular-nums">
+                          ₹{p.amount}
+                        </td>
                         <td className="py-2.5 text-right font-mono tabular-nums">
                           ₹{p.operating_cost}
                         </td>
@@ -603,7 +675,9 @@ export function AdminDashboardPage() {
               >
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-bold text-slate-900">
-                    {editingHospitalId ? `Edit Hospital #${editingHospitalId}` : 'Add Hospital Entry'}
+                    {editingHospitalId
+                      ? t('dashboards.adminDash.editHospital', { id: editingHospitalId })
+                      : t('dashboards.adminDash.addHospitalHeading')}
                   </h2>
                   {editingHospitalId && (
                     <button
@@ -611,14 +685,14 @@ export function AdminDashboardPage() {
                       onClick={resetHospitalForm}
                       className="text-xs font-medium text-slate-600 hover:underline cursor-pointer"
                     >
-                      Cancel Edit
+                      {t('dashboards.adminDash.cancelEdit')}
                     </button>
                   )}
                 </div>
                 <input
                   type="text"
                   required
-                  placeholder="Hospital Name"
+                  placeholder={t('dashboards.adminDash.hospitalName')}
                   value={hospitalForm.name}
                   onChange={(e) => setHospitalForm({ ...hospitalForm, name: e.target.value })}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
@@ -626,7 +700,7 @@ export function AdminDashboardPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Address"
+                  placeholder={t('dashboards.adminDash.address')}
                   value={hospitalForm.address}
                   onChange={(e) => setHospitalForm({ ...hospitalForm, address: e.target.value })}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
@@ -635,7 +709,7 @@ export function AdminDashboardPage() {
                   <input
                     type="text"
                     required
-                    placeholder="Village/Town"
+                    placeholder={t('auth.villageTown')}
                     value={hospitalForm.village_town}
                     onChange={(e) =>
                       setHospitalForm({ ...hospitalForm, village_town: e.target.value })
@@ -645,7 +719,7 @@ export function AdminDashboardPage() {
                   <input
                     type="text"
                     required
-                    placeholder="Phone"
+                    placeholder={t('auth.phone')}
                     value={hospitalForm.phone}
                     onChange={(e) => setHospitalForm({ ...hospitalForm, phone: e.target.value })}
                     className="px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
@@ -654,9 +728,11 @@ export function AdminDashboardPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Facilities (comma separated)"
+                  placeholder={t('dashboards.adminDash.facilitiesPlaceholder')}
                   value={hospitalForm.facilities}
-                  onChange={(e) => setHospitalForm({ ...hospitalForm, facilities: e.target.value })}
+                  onChange={(e) =>
+                    setHospitalForm({ ...hospitalForm, facilities: e.target.value })
+                  }
                   className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                 />
                 <div className="grid grid-cols-2 gap-2">
@@ -664,7 +740,7 @@ export function AdminDashboardPage() {
                     type="number"
                     step="0.0001"
                     required
-                    placeholder="Latitude"
+                    placeholder={t('dashboards.adminDash.latitude')}
                     value={hospitalForm.latitude}
                     onChange={(e) => setHospitalForm({ ...hospitalForm, latitude: e.target.value })}
                     className="px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
@@ -673,9 +749,11 @@ export function AdminDashboardPage() {
                     type="number"
                     step="0.0001"
                     required
-                    placeholder="Longitude"
+                    placeholder={t('dashboards.adminDash.longitude')}
                     value={hospitalForm.longitude}
-                    onChange={(e) => setHospitalForm({ ...hospitalForm, longitude: e.target.value })}
+                    onChange={(e) =>
+                      setHospitalForm({ ...hospitalForm, longitude: e.target.value })
+                    }
                     className="px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                   />
                 </div>
@@ -683,12 +761,16 @@ export function AdminDashboardPage() {
                   type="submit"
                   className="w-full py-2.5 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg cursor-pointer"
                 >
-                  {editingHospitalId ? 'Save Hospital Changes' : 'Add Hospital'}
+                  {editingHospitalId
+                    ? t('dashboards.adminDash.saveHospitalChanges')
+                    : t('dashboards.adminDash.addHospitalBtn')}
                 </button>
               </form>
 
               <div className="lg:col-span-7 bg-white border border-emerald-950/10 rounded-xl p-5 space-y-3">
-                <h2 className="text-base font-bold text-slate-900">Hospital Directory</h2>
+                <h2 className="text-base font-bold text-slate-900">
+                  {t('dashboards.adminDash.hospitalDirectory')}
+                </h2>
                 <div className="space-y-2">
                   {hospitals.map((h) => (
                     <div
@@ -698,7 +780,7 @@ export function AdminDashboardPage() {
                       <div>
                         <div className="text-sm font-semibold text-slate-900">{h.name}</div>
                         <div className="text-xs text-slate-600">
-                          {h.village_town} · {h.category}
+                          {h.village_town} · {translateEnum(t, 'hospitalCategory', h.category)}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -706,7 +788,7 @@ export function AdminDashboardPage() {
                           type="button"
                           onClick={() => handleEditHospital(h)}
                           className="p-2 text-emerald-800 hover:bg-emerald-50 rounded cursor-pointer"
-                          aria-label="Edit hospital"
+                          aria-label={t('dashboards.adminDash.editHospital', { id: h.id })}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -714,7 +796,7 @@ export function AdminDashboardPage() {
                           type="button"
                           onClick={() => handleDeleteHospital(h.id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                          aria-label="Delete hospital"
+                          aria-label={t('common.cancel')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -734,7 +816,9 @@ export function AdminDashboardPage() {
               >
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-bold text-slate-900">
-                    {editingArticleId ? `Edit Article #${editingArticleId}` : 'Publish Health Article'}
+                    {editingArticleId
+                      ? t('dashboards.adminDash.editArticle', { id: editingArticleId })
+                      : t('dashboards.adminDash.publishArticleHeading')}
                   </h2>
                   {editingArticleId && (
                     <button
@@ -742,14 +826,14 @@ export function AdminDashboardPage() {
                       onClick={resetArticleForm}
                       className="text-xs font-medium text-slate-600 hover:underline cursor-pointer"
                     >
-                      Cancel Edit
+                      {t('dashboards.adminDash.cancelEdit')}
                     </button>
                   )}
                 </div>
                 <input
                   type="text"
                   required
-                  placeholder="Article Title"
+                  placeholder={t('dashboards.adminDash.articleTitle')}
                   value={articleForm.title}
                   onChange={(e) => setArticleForm({ ...articleForm, title: e.target.value })}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
@@ -760,13 +844,19 @@ export function AdminDashboardPage() {
                     onChange={(e) => setArticleForm({ ...articleForm, category: e.target.value })}
                     className="px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                   >
-                    <option value="General health">General health</option>
-                    <option value="Nutrition">Nutrition</option>
-                    <option value="Hygiene">Hygiene</option>
-                    <option value="Preventive healthcare">Preventive healthcare</option>
-                    <option value="Women's health">Women's health</option>
-                    <option value="Child healthcare">Child healthcare</option>
-                    <option value="Elderly care">Elderly care</option>
+                    {[
+                      'General health',
+                      'Nutrition',
+                      'Hygiene',
+                      'Preventive healthcare',
+                      "Women's health",
+                      'Child healthcare',
+                      'Elderly care',
+                    ].map((cat) => (
+                      <option key={cat} value={cat}>
+                        {translateEnum(t, 'articleCategory', cat)}
+                      </option>
+                    ))}
                   </select>
                   <select
                     value={articleForm.language}
@@ -781,7 +871,7 @@ export function AdminDashboardPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Short description"
+                  placeholder={t('dashboards.adminDash.shortDescPlaceholder')}
                   value={articleForm.short_description}
                   onChange={(e) =>
                     setArticleForm({ ...articleForm, short_description: e.target.value })
@@ -791,7 +881,7 @@ export function AdminDashboardPage() {
                 <textarea
                   rows={4}
                   required
-                  placeholder="Reviewed educational article content..."
+                  placeholder={t('dashboards.adminDash.articleContentPlaceholder')}
                   value={articleForm.content}
                   onChange={(e) => setArticleForm({ ...articleForm, content: e.target.value })}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
@@ -800,12 +890,16 @@ export function AdminDashboardPage() {
                   type="submit"
                   className="w-full py-2.5 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg cursor-pointer"
                 >
-                  {editingArticleId ? 'Save Article Changes' : 'Publish Article'}
+                  {editingArticleId
+                    ? t('dashboards.adminDash.saveArticleChanges')
+                    : t('dashboards.adminDash.publishArticleBtn')}
                 </button>
               </form>
 
               <div className="lg:col-span-7 bg-white border border-emerald-950/10 rounded-xl p-5 space-y-3">
-                <h2 className="text-base font-bold text-slate-900">Published Health Articles</h2>
+                <h2 className="text-base font-bold text-slate-900">
+                  {t('dashboards.adminDash.publishedArticles')}
+                </h2>
                 <div className="space-y-2 max-h-[500px] overflow-y-auto">
                   {articles.map((a) => (
                     <div
@@ -815,7 +909,8 @@ export function AdminDashboardPage() {
                       <div>
                         <div className="text-sm font-semibold text-slate-900">{a.title}</div>
                         <div className="text-xs text-slate-600">
-                          {a.category} · {a.language.toUpperCase()} · {a.published_date}
+                          {translateEnum(t, 'articleCategory', a.category)} ·{' '}
+                          {a.language.toUpperCase()} · {a.published_date}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -823,7 +918,7 @@ export function AdminDashboardPage() {
                           type="button"
                           onClick={() => handleEditArticle(a)}
                           className="p-2 text-emerald-800 hover:bg-emerald-50 rounded cursor-pointer"
-                          aria-label="Edit article"
+                          aria-label={t('dashboards.adminDash.editArticle', { id: a.id })}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -831,7 +926,7 @@ export function AdminDashboardPage() {
                           type="button"
                           onClick={() => handleDeleteArticle(a.id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                          aria-label="Delete article"
+                          aria-label={t('common.cancel')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

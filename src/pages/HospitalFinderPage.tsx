@@ -5,6 +5,7 @@ import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
 import { api, getApiErrorMessage } from '../services/api';
+import { translateEnum } from '../utils/i18nHelpers';
 
 const CATEGORIES = [
   'all',
@@ -54,7 +55,7 @@ export function HospitalFinderPage() {
         setSelectedHospital(list[0]);
       }
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      setError(getApiErrorMessage(err, t('common.genericError')));
     } finally {
       setLoading(false);
     }
@@ -64,7 +65,6 @@ export function HospitalFinderPage() {
     fetchHospitals();
   }, [category]);
 
-  // Initialize Leaflet OpenStreetMap once
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -89,7 +89,6 @@ export function HospitalFinderPage() {
     };
   }, []);
 
-  // Update markers whenever hospitals or userCoords change
   useEffect(() => {
     const map = mapRef.current;
     const group = markersLayerRef.current;
@@ -107,7 +106,7 @@ export function HospitalFinderPage() {
         fillOpacity: 0.9,
         weight: 2,
       })
-        .bindPopup('<strong>Your Current Location</strong>')
+        .bindPopup(`<strong>${t('hospitalsPage.yourLocation')}</strong>`)
         .addTo(group);
     }
 
@@ -128,7 +127,11 @@ export function HospitalFinderPage() {
       marker.bindPopup(
         `<div style="min-width:180px">
           <div style="font-weight:700;font-size:13px">${h.name}</div>
-          <div style="font-size:11px;color:#475569;margin-top:2px">${h.category} · ${h.village_town}</div>
+          <div style="font-size:11px;color:#475569;margin-top:2px">${translateEnum(
+            t,
+            'hospitalCategory',
+            h.category
+          )} · ${h.village_town}</div>
           <div style="font-size:11px;margin-top:4px">${h.operating_hours}</div>
         </div>`
       );
@@ -139,12 +142,12 @@ export function HospitalFinderPage() {
     if (bounds.length > 0) {
       map.fitBounds(bounds, { padding: [36, 36], maxZoom: 13 });
     }
-  }, [hospitals, selectedHospital, userCoords]);
+  }, [hospitals, selectedHospital, userCoords, t]);
 
   const handleRequestLocation = () => {
     setGeoNotice('');
     if (!navigator.geolocation) {
-      setGeoNotice('Geolocation is unavailable in this browser. Please search by village or mandal.');
+      setGeoNotice(t('hospitalsPage.geoUnavailable'));
       return;
     }
 
@@ -152,13 +155,11 @@ export function HospitalFinderPage() {
       (pos) => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserCoords(coords);
-        setGeoNotice('Showing sample hospitals sorted by distance from your location.');
+        setGeoNotice(t('hospitalsPage.geoSuccess'));
         fetchHospitals(coords);
       },
       () => {
-        setGeoNotice(
-          'Location permission declined. Use the village or district search box below to find hospitals manually.'
-        );
+        setGeoNotice(t('hospitalsPage.geoDenied'));
       },
       { timeout: 8000 }
     );
@@ -171,9 +172,9 @@ export function HospitalFinderPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold text-slate-950">
-              {t.hospitalsPage.title}
+              {t('hospitalsPage.title')}
             </h1>
-            <p className="text-sm text-slate-600 mt-1">{t.hospitalsPage.subtitle}</p>
+            <p className="text-sm text-slate-600 mt-1">{t('hospitalsPage.subtitle')}</p>
           </div>
 
           <button
@@ -182,7 +183,7 @@ export function HospitalFinderPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-emerald-900 bg-white border border-emerald-700/25 hover:border-emerald-700 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
           >
             <LocateFixed className="w-4 h-4 text-emerald-700" />
-            <span>{t.hospitalsPage.useLocation}</span>
+            <span>{t('hospitalsPage.useLocation')}</span>
           </button>
         </div>
 
@@ -201,7 +202,7 @@ export function HospitalFinderPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && fetchHospitals()}
-              placeholder={t.hospitalsPage.searchPlaceholder}
+              placeholder={t('hospitalsPage.searchPlaceholder')}
               className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
             />
           </div>
@@ -213,7 +214,7 @@ export function HospitalFinderPage() {
               value={locationQuery}
               onChange={(e) => setLocationQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && fetchHospitals()}
-              placeholder={t.hospitalsPage.locationPlaceholder}
+              placeholder={t('hospitalsPage.locationPlaceholder')}
               className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
             />
           </div>
@@ -225,7 +226,7 @@ export function HospitalFinderPage() {
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c === 'all' ? t.common.all : c}
+                {c === 'all' ? t('common.all') : translateEnum(t, 'hospitalCategory', c)}
               </option>
             ))}
           </select>
@@ -235,7 +236,7 @@ export function HospitalFinderPage() {
             onClick={() => fetchHospitals()}
             className="md:col-span-2 px-4 py-2 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg cursor-pointer"
           >
-            {t.common.search}
+            {t('common.search')}
           </button>
         </div>
 
@@ -250,11 +251,11 @@ export function HospitalFinderPage() {
           <div className="lg:col-span-5 space-y-3 max-h-[540px] overflow-y-auto pr-1">
             {loading ? (
               <div className="p-6 bg-white rounded-xl border border-emerald-950/10 text-sm text-slate-500">
-                Loading hospitals...
+                {t('hospitalsPage.loading')}
               </div>
             ) : hospitals.length === 0 ? (
               <div className="p-6 bg-white rounded-xl border border-emerald-950/10 text-sm text-slate-600">
-                No hospitals matched your search filters.
+                {t('hospitalsPage.noMatch')}
               </div>
             ) : (
               hospitals.map((h) => {
@@ -274,18 +275,18 @@ export function HospitalFinderPage() {
                   >
                     <div className="flex items-center justify-between gap-2 text-xs text-teal-800 font-medium">
                       <span>
-                        {h.category} · {h.village_town}
+                        {translateEnum(t, 'hospitalCategory', h.category)} · {h.village_town}
                       </span>
                       {h.distance_km !== null && (
                         <span className="font-mono tabular-nums text-emerald-900">
-                          {h.distance_km} km away
+                          {t('hospitalsPage.kmAway', { km: h.distance_km })}
                         </span>
                       )}
                     </div>
                     <h2 className="text-base font-semibold text-slate-900 mt-1">{h.name}</h2>
                     <p className="text-xs text-slate-600 mt-1">{h.address}</p>
                     <p className="text-xs text-slate-500 mt-1.5">
-                      Facilities: {h.facilities}
+                      {t('hospitalsPage.facilities')}: {h.facilities}
                     </p>
                     <div className="pt-2.5 mt-2.5 border-t border-emerald-950/10 flex items-center justify-between gap-2 text-xs">
                       <span className="font-mono text-slate-700">{h.phone}</span>
@@ -297,7 +298,7 @@ export function HospitalFinderPage() {
                         className="inline-flex items-center gap-1 font-semibold text-emerald-800 hover:underline"
                       >
                         <Navigation className="w-3.5 h-3.5" />
-                        <span>Directions</span>
+                        <span>{t('hospitalsPage.directions')}</span>
                       </a>
                     </div>
                   </div>
@@ -316,7 +317,8 @@ export function HospitalFinderPage() {
               <div className="p-4 rounded-xl bg-white border border-emerald-950/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="text-xs text-slate-500">
-                    {selectedHospital.category} · {selectedHospital.operating_hours}
+                    {translateEnum(t, 'hospitalCategory', selectedHospital.category)} ·{' '}
+                    {selectedHospital.operating_hours}
                   </div>
                   <h3 className="text-sm font-bold text-slate-900">{selectedHospital.name}</h3>
                   <p className="text-xs text-slate-600">
@@ -332,7 +334,7 @@ export function HospitalFinderPage() {
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg whitespace-nowrap shrink-0"
                 >
                   <Navigation className="w-3.5 h-3.5" />
-                  <span>Open Directions</span>
+                  <span>{t('hospitalsPage.openDirections')}</span>
                 </a>
               </div>
             )}

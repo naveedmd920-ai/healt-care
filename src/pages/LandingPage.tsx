@@ -13,74 +13,12 @@ import {
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SafeImage } from '../components/SafeImage';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, SupportedLanguage } from '../context/LanguageContext';
 import { useAuth, getDashboardPathForRole } from '../context/AuthContext';
 import { api, getApiErrorMessage } from '../services/api';
-import { SupportedLanguage } from '../translations';
+import { translateEnum, translateLanguagesList } from '../utils/i18nHelpers';
 
 const HERO_IMAGE = '/src/assets/images/hero_rural_telemedicine_1795011401901.jpg';
-
-const RURAL_CHALLENGES = [
-  {
-    num: '01',
-    title: 'Long travel distances',
-    desc: 'Villagers often travel 20–50 km to reach district clinics for routine consultations.',
-  },
-  {
-    num: '02',
-    title: 'Limited doctor availability',
-    desc: 'Many rural primary centres face shortages of physicians and rotating schedules.',
-  },
-  {
-    num: '03',
-    title: 'High travel and wage loss',
-    desc: 'Daily-wage earners lose a full day of income alongside transport and clinic fees.',
-  },
-  {
-    num: '04',
-    title: 'Specialist access gap',
-    desc: 'Reaching pediatricians or gynecologists requires costly referrals to urban hospitals.',
-  },
-  {
-    num: '05',
-    title: 'Unverified health advice',
-    desc: 'Families lack reliable, medically reviewed information for preventive care.',
-  },
-  {
-    num: '06',
-    title: 'Language barriers',
-    desc: 'Medical portals built only in English exclude Telugu and Hindi speaking households.',
-  },
-  {
-    num: '07',
-    title: 'Mobility hurdles for elders',
-    desc: 'Elderly and low-income patients struggle with physical queues and repeat follow-ups.',
-  },
-  {
-    num: '08',
-    title: 'Low-bandwidth realities',
-    desc: 'Heavy interfaces fail on intermittent 3G/4G connections common in rural mandals.',
-  },
-];
-
-const FAQS = [
-  {
-    q: 'How much does an online doctor consultation cost?',
-    a: 'The proposed consultation fee is ₹100 per session, with a ₹35 direct operating cost model designed for rural affordability. During development, payments run in a clearly labelled simulation mode unless Razorpay credentials are configured.',
-  },
-  {
-    q: 'Are the doctors shown on the platform real?',
-    a: 'Initial demonstration doctors and hospitals in the directory are clearly labelled as Sample Demo Profiles. Newly registered doctors receive verified status only after an administrator reviews and approves their credentials.',
-  },
-  {
-    q: 'Can elderly patients use the platform in Telugu or Hindi?',
-    a: 'Yes. Switching between English, తెలుగు, and हिन्दी immediately translates navigation, dashboards, forms, and educational health articles, and saves your preference to your profile.',
-  },
-  {
-    q: 'What happens if I need in-person hospital care?',
-    a: 'Use the Nearby Hospital Finder powered by OpenStreetMap and Leaflet to search clinics by village or mandal, view available facilities, and open step-by-step directions.',
-  },
-];
 
 export function LandingPage() {
   const { lang, t, setLanguage } = useLanguage();
@@ -90,7 +28,6 @@ export function LandingPage() {
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  // Contact form state
   const [contactForm, setContactForm] = useState({
     name: '',
     emailOrPhone: '',
@@ -122,11 +59,33 @@ export function LandingPage() {
       setContactStatus({ type: 'success', text: res.data.message });
       setContactForm({ name: '', emailOrPhone: '', village: '', message: '' });
     } catch (err) {
-      setContactStatus({ type: 'error', text: getApiErrorMessage(err) });
+      setContactStatus({
+        type: 'error',
+        text: getApiErrorMessage(err, t('common.genericError')),
+      });
     } finally {
       setSubmittingContact(false);
     }
   };
+
+  const challenges = t('landing.challenges', { returnObjects: true }) as Array<{
+    num: string;
+    title: string;
+    desc: string;
+  }>;
+  const solutionPoints = t('landing.solutionPoints', { returnObjects: true }) as string[];
+  const steps = t('landing.steps', { returnObjects: true }) as Array<{
+    step: string;
+    detail: string;
+  }>;
+  const benefits = t('landing.benefits', { returnObjects: true }) as Array<{
+    title: string;
+    desc: string;
+  }>;
+  const faqs = t('landing.faqs', { returnObjects: true }) as Array<{
+    q: string;
+    a: string;
+  }>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAF9]">
@@ -139,19 +98,19 @@ export function LandingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
               <div className="lg:col-span-6 flex flex-col justify-center space-y-6">
                 <div className="text-sm font-medium text-emerald-800">
-                  <span>{t.tagline}</span>
+                  <span>{t('tagline')}</span>
                   <span className="mx-2 text-slate-400" aria-hidden="true">
                     ·
                   </span>
-                  <span className="font-mono tabular-nums">{t.hero.feeHighlight}</span>
+                  <span className="font-mono tabular-nums">{t('hero.feeHighlight')}</span>
                 </div>
 
                 <h1 className="text-[clamp(2.15rem,4vw,3.35rem)] leading-[1.12] font-display font-bold tracking-tight text-slate-950 [text-wrap:balance]">
-                  {t.hero.heading}
+                  {t('hero.heading')}
                 </h1>
 
                 <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-xl">
-                  {t.hero.subtitle}
+                  {t('hero.subtitle')}
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -160,7 +119,7 @@ export function LandingPage() {
                     className="inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors whitespace-nowrap shrink-0"
                   >
                     <Stethoscope className="w-4 h-4" />
-                    <span>{t.hero.ctaPrimary}</span>
+                    <span>{t('hero.ctaPrimary')}</span>
                   </Link>
 
                   <Link
@@ -168,7 +127,7 @@ export function LandingPage() {
                     className="inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-700/20 rounded-lg transition-colors whitespace-nowrap shrink-0"
                   >
                     <MapPin className="w-4 h-4" />
-                    <span>{t.hero.ctaHospitals}</span>
+                    <span>{t('hero.ctaHospitals')}</span>
                   </Link>
 
                   {user ? (
@@ -176,7 +135,7 @@ export function LandingPage() {
                       to={getDashboardPathForRole(user.role)}
                       className="inline-flex items-center gap-1.5 px-4 py-3 text-sm font-semibold text-slate-700 hover:text-emerald-800 underline underline-offset-4 whitespace-nowrap shrink-0"
                     >
-                      <span>{t.nav.dashboard}</span>
+                      <span>{t('nav.dashboard')}</span>
                       <ArrowRight className="w-4 h-4" />
                     </Link>
                   ) : (
@@ -185,28 +144,28 @@ export function LandingPage() {
                         to="/login"
                         className="px-4 py-3 text-sm font-semibold text-slate-800 hover:text-emerald-800 border border-emerald-950/15 bg-white rounded-lg transition-colors whitespace-nowrap shrink-0"
                       >
-                        {t.hero.ctaLogin}
+                        {t('hero.ctaLogin')}
                       </Link>
                       <Link
                         to="/register"
                         className="px-4 py-3 text-sm font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-4 whitespace-nowrap shrink-0"
                       >
-                        {t.hero.ctaRegister}
+                        {t('hero.ctaRegister')}
                       </Link>
                     </div>
                   )}
                 </div>
 
-                <p className="text-xs text-slate-500 pt-1">{t.hero.costTransparency}</p>
+                <p className="text-xs text-slate-500 pt-1">{t('hero.costTransparency')}</p>
               </div>
 
               <div className="lg:col-span-6">
                 <div className="h-full min-h-[280px] rounded-xl overflow-hidden border border-emerald-950/10 bg-emerald-950/5">
                   <SafeImage
                     src={HERO_IMAGE}
-                    alt="Rural Indian family consulting a doctor via tablet in a sunlit village courtyard"
+                    alt={t('hero.imageAlt')}
                     className="w-full h-full object-cover"
-                    fallbackLabel="Rural Health Connect Telemedicine"
+                    fallbackLabel={t('brand')}
                   />
                 </div>
               </div>
@@ -216,23 +175,27 @@ export function LandingPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-10 mt-10 border-t border-emerald-950/10">
               <div className="p-4 rounded-lg bg-[#F8FAF9] border border-emerald-950/10">
                 <div className="text-2xl font-display font-bold text-emerald-800 font-mono tabular-nums">
-                  ₹100
+                  {t('hero.metrics.feeValue')}
                 </div>
-                <div className="text-xs text-slate-600 mt-1">Proposed consultation fee per session</div>
+                <div className="text-xs text-slate-600 mt-1">{t('hero.metrics.feeLabel')}</div>
               </div>
               <div className="p-4 rounded-lg bg-[#F8FAF9] border border-emerald-950/10">
                 <div className="text-2xl font-display font-bold text-teal-800 font-mono tabular-nums">
-                  ₹35
+                  {t('hero.metrics.opCostValue')}
                 </div>
-                <div className="text-xs text-slate-600 mt-1">Direct operating cost per consultation</div>
+                <div className="text-xs text-slate-600 mt-1">{t('hero.metrics.opCostLabel')}</div>
               </div>
               <div className="p-4 rounded-lg bg-[#F8FAF9] border border-emerald-950/10">
-                <div className="text-2xl font-display font-bold text-slate-900">3 Languages</div>
-                <div className="text-xs text-slate-600 mt-1">English, తెలుగు, and हिन्दी interface</div>
+                <div className="text-2xl font-display font-bold text-slate-900">
+                  {t('hero.metrics.langValue')}
+                </div>
+                <div className="text-xs text-slate-600 mt-1">{t('hero.metrics.langLabel')}</div>
               </div>
               <div className="p-4 rounded-lg bg-[#F8FAF9] border border-emerald-950/10">
-                <div className="text-2xl font-display font-bold text-slate-900">3 Portals</div>
-                <div className="text-xs text-slate-600 mt-1">Patient, Doctor, and Admin RBAC</div>
+                <div className="text-2xl font-display font-bold text-slate-900">
+                  {t('hero.metrics.portalValue')}
+                </div>
+                <div className="text-xs text-slate-600 mt-1">{t('hero.metrics.portalLabel')}</div>
               </div>
             </div>
           </div>
@@ -242,21 +205,22 @@ export function LandingPage() {
         <section className="max-w-[1200px] mx-auto px-4 sm:px-6 py-16">
           <div className="max-w-2xl mb-10">
             <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-950 tracking-tight [text-wrap:balance]">
-              {t.sections.problemTitle}
+              {t('landing.problemTitle')}
             </h2>
-            <p className="text-base text-slate-600 mt-2">{t.sections.problemSubtitle}</p>
+            <p className="text-base text-slate-600 mt-2">{t('landing.problemSubtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-emerald-950/10 border border-emerald-950/10 rounded-xl overflow-hidden">
-            {RURAL_CHALLENGES.map((item) => (
-              <div key={item.num} className="bg-white p-6 space-y-2">
-                <span className="text-xs font-mono tabular-nums font-semibold text-emerald-700">
-                  {item.num}
-                </span>
-                <h3 className="text-base font-semibold text-slate-900">{item.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
+            {Array.isArray(challenges) &&
+              challenges.map((item) => (
+                <div key={item.num} className="bg-white p-6 space-y-2">
+                  <span className="text-xs font-mono tabular-nums font-semibold text-emerald-700">
+                    {item.num}
+                  </span>
+                  <h3 className="text-base font-semibold text-slate-900">{item.title}</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
           </div>
         </section>
 
@@ -266,58 +230,37 @@ export function LandingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
               <div className="lg:col-span-5 space-y-4">
                 <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-950 tracking-tight [text-wrap:balance]">
-                  {t.sections.solutionTitle}
+                  {t('landing.solutionTitle')}
                 </h2>
                 <p className="text-base text-slate-600 leading-relaxed">
-                  {t.sections.solutionSubtitle}
+                  {t('landing.solutionSubtitle')}
                 </p>
                 <div className="pt-2 space-y-2.5 text-sm text-slate-700">
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 mt-0.5 shrink-0" />
-                    <span>Duplicate-protected slot booking with transaction safety</span>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 mt-0.5 shrink-0" />
-                    <span>Authorized doctor-patient consultation room via WebRTC signaling</span>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 mt-0.5 shrink-0" />
-                    <span>OpenStreetMap hospital discovery with manual village search fallback</span>
-                  </div>
+                  {Array.isArray(solutionPoints) &&
+                    solutionPoints.map((pt) => (
+                      <div key={pt} className="flex items-start gap-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 mt-0.5 shrink-0" />
+                        <span>{pt}</span>
+                      </div>
+                    ))}
                 </div>
               </div>
 
               <div className="lg:col-span-7">
                 <h3 className="text-sm font-semibold text-slate-900 mb-4">
-                  {t.sections.howItWorksTitle}
+                  {t('landing.howItWorksTitle')}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[
-                    {
-                      step: '01. Choose Language & Register',
-                      detail: 'Select English, Telugu, or Hindi and create your village profile in under a minute.',
-                    },
-                    {
-                      step: '02. Pick a Doctor & Time Slot',
-                      detail: 'Filter verified doctors by language, specialization, and available dates.',
-                    },
-                    {
-                      step: '03. Confirm ₹100 Consultation',
-                      detail: 'Complete simulated or configured gateway payment to lock your time slot.',
-                    },
-                    {
-                      step: '04. Join Video Call & Save Notes',
-                      detail: 'Consult online from home and review doctor notes or locate nearby hospitals.',
-                    },
-                  ].map((s) => (
-                    <div
-                      key={s.step}
-                      className="p-5 rounded-xl bg-[#F8FAF9] border border-emerald-950/10 space-y-1.5"
-                    >
-                      <h4 className="text-sm font-semibold text-emerald-900">{s.step}</h4>
-                      <p className="text-sm text-slate-600 leading-relaxed">{s.detail}</p>
-                    </div>
-                  ))}
+                  {Array.isArray(steps) &&
+                    steps.map((s) => (
+                      <div
+                        key={s.step}
+                        className="p-5 rounded-xl bg-[#F8FAF9] border border-emerald-950/10 space-y-1.5"
+                      >
+                        <h4 className="text-sm font-semibold text-emerald-900">{s.step}</h4>
+                        <p className="text-sm text-slate-600 leading-relaxed">{s.detail}</p>
+                      </div>
+                    ))}
                 </div>
               </div>
             </div>
@@ -328,20 +271,21 @@ export function LandingPage() {
         <section className="max-w-[1200px] mx-auto px-4 sm:px-6 py-16">
           <div className="max-w-2xl mb-8">
             <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-950 tracking-tight">
-              {t.sections.featuresTitle}
+              {t('landing.featuresTitle')}
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2 p-6 rounded-xl bg-white border border-emerald-950/10 flex flex-col justify-between space-y-4">
               <div className="space-y-2">
-                <div className="text-xs font-medium text-emerald-700">Telemedicine Workflow</div>
+                <div className="text-xs font-medium text-emerald-700">
+                  {t('landing.bento.workflowEyebrow')}
+                </div>
                 <h3 className="text-xl font-display font-bold text-slate-900">
-                  Real Slot Locking & Role-Protected Video Consultations
+                  {t('landing.bento.workflowTitle')}
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
-                  Patients see real-time slot availability, doctors approve or complete consultations from
-                  their schedule, and administrators verify practitioner credentials before profiles go live.
+                  {t('landing.bento.workflowDesc')}
                 </p>
               </div>
               <div>
@@ -349,7 +293,7 @@ export function LandingPage() {
                   to="/doctors"
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-800 hover:underline"
                 >
-                  <span>Browse Doctor Directory</span>
+                  <span>{t('landing.bento.browseDirectory')}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -357,37 +301,34 @@ export function LandingPage() {
 
             <div className="p-6 rounded-xl bg-emerald-900 text-white space-y-3">
               <ShieldCheck className="w-6 h-6 text-emerald-300" />
-              <h3 className="text-lg font-display font-bold">Strict Verification & RBAC</h3>
+              <h3 className="text-lg font-display font-bold">{t('landing.bento.rbacTitle')}</h3>
               <p className="text-sm text-emerald-100 leading-relaxed">
-                Patient medical notes stay private to the assigned doctor and patient. New doctor accounts
-                remain pending until approved by an administrator.
+                {t('landing.bento.rbacDesc')}
               </p>
             </div>
 
             <div className="p-6 rounded-xl bg-white border border-emerald-950/10 space-y-2">
               <MapPin className="w-5 h-5 text-teal-700" />
-              <h3 className="text-base font-semibold text-slate-900">Interactive Hospital Map</h3>
-              <p className="text-sm text-slate-600">
-                OpenStreetMap and Leaflet pins for rural PHCs, CHCs, and referral hospitals with manual
-                village search.
-              </p>
+              <h3 className="text-base font-semibold text-slate-900">
+                {t('landing.bento.mapTitle')}
+              </h3>
+              <p className="text-sm text-slate-600">{t('landing.bento.mapDesc')}</p>
             </div>
 
             <div className="p-6 rounded-xl bg-white border border-emerald-950/10 space-y-2">
               <Languages className="w-5 h-5 text-teal-700" />
-              <h3 className="text-base font-semibold text-slate-900">English, Telugu & Hindi</h3>
-              <p className="text-sm text-slate-600">
-                Full UI translation across public pages, forms, alerts, and health education articles.
-              </p>
+              <h3 className="text-base font-semibold text-slate-900">
+                {t('landing.bento.langTitle')}
+              </h3>
+              <p className="text-sm text-slate-600">{t('landing.bento.langDesc')}</p>
             </div>
 
             <div className="p-6 rounded-xl bg-white border border-emerald-950/10 space-y-2">
               <Clock className="w-5 h-5 text-amber-600" />
-              <h3 className="text-base font-semibold text-slate-900">Preventive Health Library</h3>
-              <p className="text-sm text-slate-600">
-                7 reviewed categories covering nutrition, hygiene, maternal care, child vaccines, and
-                senior wellness.
-              </p>
+              <h3 className="text-base font-semibold text-slate-900">
+                {t('landing.bento.libraryTitle')}
+              </h3>
+              <p className="text-sm text-slate-600">{t('landing.bento.libraryDesc')}</p>
             </div>
           </div>
         </section>
@@ -398,15 +339,15 @@ export function LandingPage() {
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-950">
-                  {t.sections.doctorsTitle}
+                  {t('landing.doctorsTitle')}
                 </h2>
-                <p className="text-sm text-slate-600 mt-1">{t.sections.doctorsNote}</p>
+                <p className="text-sm text-slate-600 mt-1">{t('landing.doctorsNote')}</p>
               </div>
               <Link
                 to="/doctors"
                 className="text-sm font-semibold text-emerald-800 hover:underline whitespace-nowrap shrink-0"
               >
-                View All Doctors →
+                {t('landing.viewAllDoctors')}
               </Link>
             </div>
 
@@ -429,11 +370,13 @@ export function LandingPage() {
                         </h3>
                         <p className="text-xs text-slate-600 truncate">{doc.qualification}</p>
                         <div className="text-xs text-emerald-800 mt-1">
-                          <span>{doc.specialization}</span>
+                          <span>{translateEnum(t, 'specialization', doc.specialization)}</span>
                           <span className="mx-1.5" aria-hidden="true">
                             ·
                           </span>
-                          <span className="tabular-nums">{doc.experience_years} yrs exp</span>
+                          <span className="tabular-nums">
+                            {doc.experience_years} {t('common.yrsExpShort')}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -441,13 +384,15 @@ export function LandingPage() {
                     <p className="text-sm text-slate-600 line-clamp-2">{doc.bio}</p>
 
                     <div className="text-xs text-slate-500">
-                      <span>{doc.languages_spoken}</span>
+                      <span>{translateLanguagesList(t, doc.languages_spoken)}</span>
                       {doc.is_sample ? (
                         <>
                           <span className="mx-1.5" aria-hidden="true">
                             ·
                           </span>
-                          <span className="text-amber-700 font-medium">{t.common.sampleLabel}</span>
+                          <span className="text-amber-700 font-medium">
+                            {t('common.sampleLabel')}
+                          </span>
                         </>
                       ) : null}
                     </div>
@@ -461,7 +406,7 @@ export function LandingPage() {
                       to={`/doctors/${doc.id}`}
                       className="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg whitespace-nowrap shrink-0"
                     >
-                      {t.dashboards.bookSlot}
+                      {t('dashboards.bookSlot')}
                     </Link>
                   </div>
                 </div>
@@ -475,17 +420,15 @@ export function LandingPage() {
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
             <div>
               <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-950">
-                {t.sections.hospitalsTitle}
+                {t('landing.hospitalsTitle')}
               </h2>
-              <p className="text-sm text-slate-600 mt-1">
-                Search local PHCs, CHCs, and referral centres on an interactive OpenStreetMap view.
-              </p>
+              <p className="text-sm text-slate-600 mt-1">{t('landing.hospitalsSubtitle')}</p>
             </div>
             <Link
               to="/hospitals"
               className="px-4 py-2 text-sm font-semibold text-emerald-900 bg-white border border-emerald-950/15 hover:border-emerald-700 rounded-lg whitespace-nowrap shrink-0"
             >
-              Open Interactive Map →
+              {t('landing.openMap')}
             </Link>
           </div>
 
@@ -496,7 +439,7 @@ export function LandingPage() {
                 className="p-5 rounded-xl bg-white border border-emerald-950/10 space-y-2"
               >
                 <div className="text-xs text-teal-800 font-medium">
-                  <span>{h.category}</span>
+                  <span>{translateEnum(t, 'hospitalCategory', h.category)}</span>
                   <span className="mx-1.5" aria-hidden="true">
                     ·
                   </span>
@@ -515,12 +458,9 @@ export function LandingPage() {
           <div className="max-w-[1200px] mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div className="p-6 rounded-xl bg-[#F8FAF9] border border-emerald-950/10 space-y-4">
               <h2 className="text-2xl font-display font-bold text-slate-950">
-                {t.sections.multilingualTitle}
+                {t('landing.multilingualTitle')}
               </h2>
-              <p className="text-sm text-slate-600">
-                Try switching the platform language right now. Every menu, form, and article updates
-                immediately.
-              </p>
+              <p className="text-sm text-slate-600">{t('landing.multilingualSubtitle')}</p>
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -547,33 +487,19 @@ export function LandingPage() {
 
             <div className="space-y-4">
               <h2 className="text-2xl font-display font-bold text-slate-950">
-                {t.sections.benefitsTitle}
+                {t('landing.benefitsTitle')}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div className="p-4 rounded-lg border border-emerald-950/10 bg-[#F8FAF9]">
-                  <div className="font-semibold text-slate-900">Elderly & Mobility Support</div>
-                  <p className="text-slate-600 mt-1">
-                    Large readable controls and zero travel needed for routine medicine reviews.
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg border border-emerald-950/10 bg-[#F8FAF9]">
-                  <div className="font-semibold text-slate-900">Women & Child Care</div>
-                  <p className="text-slate-600 mt-1">
-                    Direct access to maternal and pediatric guidance plus immunization reminders.
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg border border-emerald-950/10 bg-[#F8FAF9]">
-                  <div className="font-semibold text-slate-900">Daily-Wage Savings</div>
-                  <p className="text-slate-600 mt-1">
-                    Schedule slots before or after work hours without sacrificing a day of income.
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg border border-emerald-950/10 bg-[#F8FAF9]">
-                  <div className="font-semibold text-slate-900">Transparent ₹100 Fee</div>
-                  <p className="text-slate-600 mt-1">
-                    Predictable consultation pricing backed by a lean ₹35 operating model.
-                  </p>
-                </div>
+                {Array.isArray(benefits) &&
+                  benefits.map((b) => (
+                    <div
+                      key={b.title}
+                      className="p-4 rounded-lg border border-emerald-950/10 bg-[#F8FAF9]"
+                    >
+                      <div className="font-semibold text-slate-900">{b.title}</div>
+                      <p className="text-slate-600 mt-1">{b.desc}</p>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>
@@ -584,31 +510,32 @@ export function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             <div className="lg:col-span-6 space-y-4">
               <h2 className="text-2xl font-display font-bold text-slate-950">
-                {t.sections.faqTitle}
+                {t('landing.faqTitle')}
               </h2>
               <div className="divide-y divide-emerald-950/10 border border-emerald-950/10 rounded-xl bg-white">
-                {FAQS.map((faq, idx) => {
-                  const isOpen = openFaq === idx;
-                  return (
-                    <div key={faq.q} className="p-4">
-                      <button
-                        type="button"
-                        onClick={() => setOpenFaq(isOpen ? null : idx)}
-                        className="w-full flex items-center justify-between gap-4 text-left text-sm font-semibold text-slate-900 cursor-pointer"
-                      >
-                        <span>{faq.q}</span>
-                        <ChevronDown
-                          className={`w-4 h-4 shrink-0 text-slate-500 transition-transform ${
-                            isOpen ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </button>
-                      {isOpen && (
-                        <p className="text-sm text-slate-600 mt-2.5 leading-relaxed">{faq.a}</p>
-                      )}
-                    </div>
-                  );
-                })}
+                {Array.isArray(faqs) &&
+                  faqs.map((faq, idx) => {
+                    const isOpen = openFaq === idx;
+                    return (
+                      <div key={idx} className="p-4">
+                        <button
+                          type="button"
+                          onClick={() => setOpenFaq(isOpen ? null : idx)}
+                          className="w-full flex items-center justify-between gap-4 text-left text-sm font-semibold text-slate-900 cursor-pointer"
+                        >
+                          <span>{faq.q}</span>
+                          <ChevronDown
+                            className={`w-4 h-4 shrink-0 text-slate-500 transition-transform ${
+                              isOpen ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </button>
+                        {isOpen && (
+                          <p className="text-sm text-slate-600 mt-2.5 leading-relaxed">{faq.a}</p>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 
@@ -616,12 +543,9 @@ export function LandingPage() {
               <div className="p-6 rounded-xl bg-white border border-emerald-950/10 space-y-4">
                 <div>
                   <h2 className="text-2xl font-display font-bold text-slate-950">
-                    {t.sections.contactTitle}
+                    {t('landing.contactTitle')}
                   </h2>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Team Elite · Sreenidhi Institute of Science and Technology (SNIST), Yamnampet,
-                    Ghatkesar.
-                  </p>
+                  <p className="text-sm text-slate-600 mt-1">{t('landing.contactTeam')}</p>
                 </div>
 
                 {contactStatus && (
@@ -640,20 +564,20 @@ export function LandingPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Your Name
+                        {t('landing.contactForm.nameLabel')}
                       </label>
                       <input
                         type="text"
                         required
                         value={contactForm.name}
                         onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                        placeholder="e.g. Ramesh Goud"
+                        placeholder={t('landing.contactForm.namePlaceholder')}
                         className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Email or Phone
+                        {t('landing.contactForm.contactLabel')}
                       </label>
                       <input
                         type="text"
@@ -662,31 +586,33 @@ export function LandingPage() {
                         onChange={(e) =>
                           setContactForm({ ...contactForm, emailOrPhone: e.target.value })
                         }
-                        placeholder="Phone or email"
+                        placeholder={t('landing.contactForm.contactPlaceholder')}
                         className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                       />
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">
-                      Village / Town (Optional)
+                      {t('landing.contactForm.villageLabel')}
                     </label>
                     <input
                       type="text"
                       value={contactForm.village}
                       onChange={(e) => setContactForm({ ...contactForm, village: e.target.value })}
-                      placeholder="e.g. Yamnampet, Ghatkesar"
+                      placeholder={t('landing.contactForm.villagePlaceholder')}
                       className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Message</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      {t('landing.contactForm.messageLabel')}
+                    </label>
                     <textarea
                       required
                       rows={3}
                       value={contactForm.message}
                       onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                      placeholder="How can our rural health coordinators assist you?"
+                      placeholder={t('landing.contactForm.messagePlaceholder')}
                       className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                     />
                   </div>
@@ -695,7 +621,9 @@ export function LandingPage() {
                     disabled={submittingContact}
                     className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 rounded-lg transition-colors cursor-pointer"
                   >
-                    {submittingContact ? 'Sending...' : 'Send Inquiry'}
+                    {submittingContact
+                      ? t('landing.contactForm.sending')
+                      : t('landing.contactForm.submit')}
                   </button>
                 </form>
               </div>

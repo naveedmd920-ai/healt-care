@@ -39,7 +39,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<AuthUser>;
+  login: (identifier: string, password: string) => Promise<AuthUser>;
   register: (payload: Record<string, any>) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -66,7 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await api.get('/auth/me');
       setUser(res.data.user);
       setToken(activeToken);
-      if (res.data.user?.preferred_language) {
+      const storedLang = localStorage.getItem('rhc_language');
+      if (!storedLang && res.data.user?.preferred_language) {
         await setLanguage(res.data.user.preferred_language, false);
       }
     } catch {
@@ -82,13 +83,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser();
   }, []);
 
-  const login = async (email: string, password: string): Promise<AuthUser> => {
-    const res = await api.post('/auth/login', { email, password });
+  const login = async (identifier: string, password: string): Promise<AuthUser> => {
+    const res = await api.post('/auth/login', { identifier: identifier.trim(), password });
     const { token: nextToken, user: nextUser } = res.data;
     localStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
     setToken(nextToken);
     setUser(nextUser);
-    if (nextUser?.preferred_language) {
+    const storedLang = localStorage.getItem('rhc_language');
+    if (!storedLang && nextUser?.preferred_language) {
       await setLanguage(nextUser.preferred_language, false);
     }
     return nextUser;

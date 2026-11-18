@@ -10,14 +10,27 @@ import {
   sqlNow,
 } from '../utils/crypto.ts';
 
+function normalizePhone(raw: string): string {
+  return raw.replace(/[\s\-()]/g, '').trim();
+}
+
+const strongPasswordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/^(?=.*[A-Za-z])(?=.*\d).+$/, 'Password must include at least one letter and one number');
+
 const registerSchema = z
   .object({
     fullName: z.string().trim().min(2, 'Full name must be at least 2 characters'),
     email: z.string().trim().email('Please enter a valid email address').toLowerCase(),
-    phone: z.string().trim().regex(/^[0-9+\-\s]{8,15}$/, 'Please enter a valid phone number'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    phone: z
+      .string()
+      .trim()
+      .transform((val) => normalizePhone(val))
+      .refine((val) => /^[+]?[0-9]{8,15}$/.test(val), 'Please enter a valid 8–15 digit phone number'),
+    password: strongPasswordSchema,
     confirmPassword: z.string(),
-    age: z.coerce.number().int().min(1).max(120),
+    age: z.coerce.number().int().min(1, 'Age must be between 1 and 120').max(120, 'Age must be between 1 and 120'),
     gender: z.enum(['male', 'female', 'other']),
     villageTown: z.string().trim().min(2, 'Village or town name is required'),
     district: z.string().trim().optional(),
@@ -34,10 +47,16 @@ const registerSchema = z
     path: ['confirmPassword'],
   });
 
-const loginSchema = z.object({
-  email: z.string().trim().email('Valid email is required').toLowerCase(),
-  password: z.string().min(1, 'Password is required'),
-});
+const loginSchema = z
+  .object({
+    identifier: z.string().trim().min(3, 'Email or phone number is required').optional(),
+    email: z.string().trim().min(3, 'Email or phone number is required').optional(),
+    password: z.string().min(1, 'Password is required'),
+  })
+  .refine((d) => Boolean(d.identifier || d.email), {
+    message: 'Email or phone number is required',
+    path: ['identifier'],
+  });
 
 const forgotSchema = z.object({
   email: z.string().trim().email('Valid email is required').toLowerCase(),
@@ -46,7 +65,7 @@ const forgotSchema = z.object({
 const resetSchema = z.object({
   email: z.string().trim().email('Valid email is required').toLowerCase(),
   otp: z.string().trim().min(4, 'Verification OTP is required'),
-  newPassword: z.string().min(6, 'New password must be at least 6 characters'),
+  newPassword: strongPasswordSchema,
 });
 
 async function buildSafeUserPayload(userId: number) {
@@ -80,6 +99,11 @@ async function buildSafeUserPayload(userId: number) {
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
+  if (req.body?.role === 'admin') {
+    res.status(403).json({ error: 'Administrator accounts cannot be self-registered.' });
+    return;
+  }
+
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
@@ -92,9 +116,24 @@ export async function register(req: Request, res: Response): Promise<void> {
   const data = parsed.data;
 
   try {
-    const existing = await db.get<{ id: number }>('SELECT id FROM users WHERE email = ?', [data.email]);
-    if (existing) {
+    const existingEmail = await db.get<{ id: number }>(
+      'SELECT id FROM users WHERE LOWER(email) = ?',
+      [data.email]
+    );
+    if (existingEmail) {
       res.status(409).json({ error: 'An account with this email already exists.' });
+      return;
+    }
+
+    const normalizedDigits = data.phone.replace(/^\+/, '');
+    const existingPhone = await db.get<{ id: number }>(
+      `SELECT id FROM users
+       WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', '') = ?
+          OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?`,
+      [data.phone, normalizedDigits]
+    );
+    if (existingPhone) {
+      res.status(409).json({ error: 'An account with this phone number already exists.' });
       return;
     }
 
@@ -212,14 +251,30 @@ export async function login(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const { email, password } = parsed.data;
+  const rawIdentifier = (parsed.data.identifier || parsed.data.email || '').trim();
+  const { password } = parsed.data;
+  const isEmail = rawIdentifier.includes('@');
+
   try {
-    const user = await db.get<any>(
-      'SELECT id, email, password_hash, role, is_active FROM users WHERE email = ?',
-      [email]
-    );
+    let user: any = null;
+    if (isEmail) {
+      user = await db.get<any>(
+        'SELECT id, email, password_hash, role, is_active FROM users WHERE LOWER(email) = ?',
+        [rawIdentifier.toLowerCase()]
+      );
+    } else {
+      const normalized = normalizePhone(rawIdentifier);
+      const digitsOnly = normalized.replace(/^\+/, '');
+      user = await db.get<any>(
+        `SELECT id, email, password_hash, role, is_active FROM users
+         WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', '') = ?
+            OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?`,
+        [normalized, digitsOnly]
+      );
+    }
+
     if (!user) {
-      res.status(401).json({ error: 'Invalid email or password.' });
+      res.status(401).json({ error: 'Invalid email/phone or password.' });
       return;
     }
     if (!user.is_active) {
@@ -229,7 +284,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     const ok = await comparePassword(password, user.password_hash);
     if (!ok) {
-      res.status(401).json({ error: 'Invalid email or password.' });
+      res.status(401).json({ error: 'Invalid email/phone or password.' });
       return;
     }
 

@@ -15,8 +15,9 @@ import {
 } from 'lucide-react';
 import { DashboardShell, SidebarNavItem } from '../components/DashboardShell';
 import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, SupportedLanguage } from '../context/LanguageContext';
 import { api, getApiErrorMessage } from '../services/api';
+import { translateEnum } from '../utils/i18nHelpers';
 
 export function PatientDashboardPage() {
   const { refreshUser } = useAuth();
@@ -28,13 +29,11 @@ export function PatientDashboardPage() {
   const [error, setError] = useState('');
   const [actionMsg, setActionMsg] = useState('');
 
-  // Modal states (never use window.confirm)
   const [cancelTarget, setCancelTarget] = useState<any>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [notesModalAppt, setNotesModalAppt] = useState<any>(null);
 
-  // Profile editor state
   const [profileForm, setProfileForm] = useState({
     fullName: '',
     phone: '',
@@ -71,7 +70,7 @@ export function PatientDashboardPage() {
         });
       }
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      setError(getApiErrorMessage(err, t('common.genericError')));
     } finally {
       setLoading(false);
     }
@@ -95,11 +94,11 @@ export function PatientDashboardPage() {
       await api.patch(`/appointments/${cancelTarget.id}/cancel`, {
         reason: cancelReason.trim() || 'Cancelled by patient from dashboard',
       });
-      setActionMsg(`Appointment #${cancelTarget.id} cancelled and slot released.`);
+      setActionMsg(t('dashboards.cancelledMsg', { id: cancelTarget.id }));
       setCancelTarget(null);
       await loadDashboard();
     } catch (err) {
-      setActionMsg(getApiErrorMessage(err));
+      setActionMsg(getApiErrorMessage(err, t('common.genericError')));
     } finally {
       setCancelling(false);
     }
@@ -129,12 +128,12 @@ export function PatientDashboardPage() {
     setActionMsg('');
     try {
       await api.put('/patient/profile', profileForm);
-      await setLanguage(profileForm.preferredLanguage as 'en' | 'te' | 'hi', false);
+      await setLanguage(profileForm.preferredLanguage as SupportedLanguage, false);
       await refreshUser();
       await loadDashboard();
-      setActionMsg('Profile updated successfully.');
+      setActionMsg(t('dashboards.profileUpdated'));
     } catch (err) {
-      setActionMsg(getApiErrorMessage(err));
+      setActionMsg(getApiErrorMessage(err, t('common.genericError')));
     } finally {
       setSavingProfile(false);
     }
@@ -151,39 +150,39 @@ export function PatientDashboardPage() {
   );
 
   const navItems: SidebarNavItem[] = [
-    { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'overview', label: t('dashboards.overview'), icon: <LayoutDashboard className="w-4 h-4" /> },
     {
       id: 'appointments',
-      label: t.dashboards.upcomingAppts,
+      label: t('dashboards.upcomingAppts'),
       icon: <CalendarClock className="w-4 h-4" />,
       badgeCount: (data?.upcomingAppointments || []).length,
     },
-    { id: 'history', label: t.dashboards.completedAppts, icon: <FileCheck2 className="w-4 h-4" /> },
-    { id: 'payments', label: t.dashboards.payments, icon: <CreditCard className="w-4 h-4" /> },
+    { id: 'history', label: t('dashboards.completedAppts'), icon: <FileCheck2 className="w-4 h-4" /> },
+    { id: 'payments', label: t('dashboards.payments'), icon: <CreditCard className="w-4 h-4" /> },
     {
       id: 'notifications',
-      label: t.dashboards.notifications,
+      label: t('dashboards.notifications'),
       icon: <Bell className="w-4 h-4" />,
       badgeCount: unreadCount,
     },
-    { id: 'profile', label: t.dashboards.editProfile, icon: <UserCog className="w-4 h-4" /> },
+    { id: 'profile', label: t('dashboards.editProfile'), icon: <UserCog className="w-4 h-4" /> },
   ];
 
   return (
     <DashboardShell
-      portalLabel="Patient Portal"
+      portalLabel={t('dashboards.patientPortal')}
       items={navItems}
       activeTab={activeTab}
       onSelectTab={setActiveTab}
       extraLinks={[
-        { to: '/doctors', label: t.dashboards.findDoctor },
-        { to: '/hospitals', label: t.dashboards.nearbyHospitals },
-        { to: '/health-tips', label: t.dashboards.healthTips },
+        { to: '/doctors', label: t('dashboards.findDoctor') },
+        { to: '/hospitals', label: t('dashboards.nearbyHospitals') },
+        { to: '/health-tips', label: t('dashboards.healthTips') },
       ]}
     >
       {loading ? (
         <div className="p-8 bg-white rounded-xl border border-emerald-950/10 text-sm text-slate-600">
-          Loading your dashboard...
+          {t('dashboards.loadingDashboard')}
         </div>
       ) : error ? (
         <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
@@ -202,10 +201,10 @@ export function PatientDashboardPage() {
               <div className="bg-white border border-emerald-950/10 rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h1 className="text-2xl font-display font-bold text-slate-950">
-                    {t.dashboards.welcome}, {data.profile.full_name}
+                    {t('dashboards.welcome')}, {data.profile.full_name}
                   </h1>
                   <p className="text-sm text-slate-600 mt-1">
-                    {data.profile.village_town} · {data.profile.district} · Age{' '}
+                    {data.profile.village_town} · {data.profile.district} · {t('common.age')}{' '}
                     <span className="tabular-nums">{data.profile.age || '—'}</span>
                   </p>
                 </div>
@@ -215,14 +214,14 @@ export function PatientDashboardPage() {
                     className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg"
                   >
                     <Stethoscope className="w-4 h-4" />
-                    <span>{t.dashboards.bookSlot}</span>
+                    <span>{t('dashboards.bookSlot')}</span>
                   </Link>
                   <Link
                     to="/hospitals"
                     className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-emerald-900 bg-emerald-50 border border-emerald-700/20 rounded-lg"
                   >
                     <MapPin className="w-4 h-4" />
-                    <span>{t.dashboards.nearbyHospitals}</span>
+                    <span>{t('dashboards.nearbyHospitals')}</span>
                   </Link>
                 </div>
               </div>
@@ -233,12 +232,13 @@ export function PatientDashboardPage() {
                     <Clock className="w-5 h-5 text-teal-800 shrink-0 mt-0.5" />
                     <div>
                       <div className="text-xs font-bold uppercase tracking-wide text-teal-900">
-                        {t.dashboards.reminderBanner}
+                        {t('dashboards.reminderBanner')}
                       </div>
                       <p className="text-sm font-medium text-slate-900 mt-0.5">
                         {imminentAppointments[0].doctor_name} ·{' '}
                         <span className="font-mono tabular-nums">
-                          {imminentAppointments[0].appointment_date} at {imminentAppointments[0].time_slot}
+                          {imminentAppointments[0].appointment_date} {t('common.at')}{' '}
+                          {imminentAppointments[0].time_slot}
                         </span>
                       </p>
                     </div>
@@ -247,26 +247,26 @@ export function PatientDashboardPage() {
                     to={`/consultation/${imminentAppointments[0].id}`}
                     className="px-4 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg whitespace-nowrap shrink-0 text-center"
                   >
-                    {t.dashboards.joinCall}
+                    {t('dashboards.joinCall')}
                   </Link>
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-5 bg-white border border-emerald-950/10 rounded-xl">
-                  <div className="text-xs text-slate-500">{t.dashboards.upcomingAppts}</div>
+                  <div className="text-xs text-slate-500">{t('dashboards.upcomingAppts')}</div>
                   <div className="text-2xl font-display font-bold font-mono tabular-nums text-emerald-800 mt-1">
                     {data.upcomingAppointments.length}
                   </div>
                 </div>
                 <div className="p-5 bg-white border border-emerald-950/10 rounded-xl">
-                  <div className="text-xs text-slate-500">{t.dashboards.completedAppts}</div>
+                  <div className="text-xs text-slate-500">{t('dashboards.completedAppts')}</div>
                   <div className="text-2xl font-display font-bold font-mono tabular-nums text-slate-900 mt-1">
                     {data.completedAppointments.length}
                   </div>
                 </div>
                 <div className="p-5 bg-white border border-emerald-950/10 rounded-xl">
-                  <div className="text-xs text-slate-500">Unread {t.dashboards.notifications}</div>
+                  <div className="text-xs text-slate-500">{t('dashboards.unreadNotifications')}</div>
                   <div className="text-2xl font-display font-bold font-mono tabular-nums text-amber-700 mt-1">
                     {unreadCount}
                   </div>
@@ -277,20 +277,18 @@ export function PatientDashboardPage() {
               <div className="bg-white border border-emerald-950/10 rounded-xl p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-bold text-slate-900">
-                    {t.dashboards.upcomingAppts}
+                    {t('dashboards.upcomingAppts')}
                   </h2>
                   <button
                     type="button"
                     onClick={() => setActiveTab('appointments')}
                     className="text-xs font-semibold text-emerald-800 hover:underline cursor-pointer"
                   >
-                    Manage All →
+                    {t('dashboards.manageAll')}
                   </button>
                 </div>
                 {data.upcomingAppointments.length === 0 ? (
-                  <p className="text-sm text-slate-600">
-                    No upcoming appointments scheduled. Browse the doctor directory to book one.
-                  </p>
+                  <p className="text-sm text-slate-600">{t('dashboards.noUpcomingPreview')}</p>
                 ) : (
                   <div className="divide-y divide-emerald-950/10">
                     {data.upcomingAppointments.slice(0, 3).map((a: any) => (
@@ -300,10 +298,11 @@ export function PatientDashboardPage() {
                       >
                         <div>
                           <div className="text-sm font-semibold text-slate-900">
-                            {a.doctor_name} · {a.specialization}
+                            {a.doctor_name} · {translateEnum(t, 'specialization', a.specialization)}
                           </div>
                           <div className="text-xs text-slate-600 font-mono tabular-nums mt-0.5">
-                            {a.appointment_date} at {a.time_slot} · Status: {a.status}
+                            {a.appointment_date} {t('common.at')} {a.time_slot} ·{' '}
+                            {t('dashboards.statusLabel')}: {translateEnum(t, 'status', a.status)}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -311,14 +310,14 @@ export function PatientDashboardPage() {
                             to={`/consultation/${a.id}`}
                             className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg"
                           >
-                            {t.dashboards.joinCall}
+                            {t('dashboards.joinCall')}
                           </Link>
                           <button
                             type="button"
                             onClick={() => openCancelModal(a)}
                             className="px-3 py-1.5 text-xs font-medium text-red-700 border border-red-200 rounded-lg hover:bg-red-50 cursor-pointer"
                           >
-                            Cancel
+                            {t('dashboards.cancel')}
                           </button>
                         </div>
                       </div>
@@ -332,10 +331,13 @@ export function PatientDashboardPage() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-emerald-700" />
-                    <span>Recommended {t.dashboards.healthTips}</span>
+                    <span>{t('dashboards.recommendedTips')}</span>
                   </h2>
-                  <Link to="/health-tips" className="text-xs font-semibold text-emerald-800 hover:underline">
-                    Read More →
+                  <Link
+                    to="/health-tips"
+                    className="text-xs font-semibold text-emerald-800 hover:underline"
+                  >
+                    {t('dashboards.readMore')}
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -345,7 +347,9 @@ export function PatientDashboardPage() {
                       to="/health-tips"
                       className="p-3.5 rounded-lg border border-emerald-950/10 bg-[#F8FAF9] hover:border-emerald-700 transition-colors"
                     >
-                      <div className="text-[11px] font-medium text-emerald-800">{art.category}</div>
+                      <div className="text-[11px] font-medium text-emerald-800">
+                        {translateEnum(t, 'articleCategory', art.category)}
+                      </div>
                       <div className="text-sm font-semibold text-slate-900 mt-1 line-clamp-2">
                         {art.title}
                       </div>
@@ -360,17 +364,17 @@ export function PatientDashboardPage() {
             <div className="bg-white border border-emerald-950/10 rounded-xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h1 className="text-xl font-display font-bold text-slate-950">
-                  {t.dashboards.upcomingAppts}
+                  {t('dashboards.upcomingAppts')}
                 </h1>
                 <Link
                   to="/doctors"
                   className="px-4 py-2 text-xs font-semibold text-white bg-emerald-700 rounded-lg"
                 >
-                  Book New Appointment
+                  {t('dashboards.bookNewAppt')}
                 </Link>
               </div>
               {data.upcomingAppointments.length === 0 ? (
-                <p className="text-sm text-slate-600">No upcoming appointments.</p>
+                <p className="text-sm text-slate-600">{t('dashboards.noUpcoming')}</p>
               ) : (
                 <div className="space-y-3">
                   {data.upcomingAppointments.map((a: any) => (
@@ -380,27 +384,34 @@ export function PatientDashboardPage() {
                     >
                       <div className="space-y-1">
                         <div className="text-sm font-bold text-slate-900">
-                          #{a.id} · {a.doctor_name} ({a.specialization})
+                          #{a.id} · {a.doctor_name} (
+                          {translateEnum(t, 'specialization', a.specialization)})
                         </div>
                         <div className="text-xs text-slate-600 font-mono tabular-nums">
-                          {a.appointment_date} · {a.time_slot} · Mode: {a.consultation_mode} · Status:{' '}
-                          <span className="uppercase font-semibold text-emerald-800">{a.status}</span>
+                          {a.appointment_date} · {a.time_slot} · {t('dashboards.modeLabel')}:{' '}
+                          {translateEnum(t, 'mode', a.consultation_mode)} ·{' '}
+                          {t('dashboards.statusLabel')}:{' '}
+                          <span className="font-semibold text-emerald-800">
+                            {translateEnum(t, 'status', a.status)}
+                          </span>
                         </div>
-                        <div className="text-xs text-slate-600">Symptoms: {a.symptoms}</div>
+                        <div className="text-xs text-slate-600">
+                          {t('dashboards.symptomsLabel')}: {a.symptoms}
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Link
                           to={`/consultation/${a.id}`}
                           className="px-3.5 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg"
                         >
-                          {t.dashboards.joinCall}
+                          {t('dashboards.joinCall')}
                         </Link>
                         <button
                           type="button"
                           onClick={() => openCancelModal(a)}
                           className="px-3.5 py-2 text-xs font-semibold text-red-700 bg-white border border-red-200 hover:bg-red-50 rounded-lg cursor-pointer"
                         >
-                          {t.dashboards.cancelAppt}
+                          {t('dashboards.cancelAppt')}
                         </button>
                       </div>
                     </div>
@@ -413,10 +424,10 @@ export function PatientDashboardPage() {
           {activeTab === 'history' && (
             <div className="bg-white border border-emerald-950/10 rounded-xl p-6 space-y-5">
               <h1 className="text-xl font-display font-bold text-slate-950">
-                Completed & Cancelled Consultations
+                {t('dashboards.pastHeading')}
               </h1>
               {[...data.completedAppointments, ...data.cancelledAppointments].length === 0 ? (
-                <p className="text-sm text-slate-600">No past consultation records yet.</p>
+                <p className="text-sm text-slate-600">{t('dashboards.noPast')}</p>
               ) : (
                 <div className="space-y-3">
                   {[...data.completedAppointments, ...data.cancelledAppointments].map((a: any) => (
@@ -426,25 +437,28 @@ export function PatientDashboardPage() {
                     >
                       <div className="flex flex-wrap justify-between gap-2">
                         <div className="text-sm font-bold text-slate-900">
-                          {a.doctor_name} · {a.specialization}
+                          {a.doctor_name} · {translateEnum(t, 'specialization', a.specialization)}
                         </div>
                         <span className="text-xs font-mono tabular-nums text-slate-600">
-                          {a.appointment_date} {a.time_slot} · {a.status.toUpperCase()}
+                          {a.appointment_date} {a.time_slot} ·{' '}
+                          {translateEnum(t, 'status', a.status)}
                         </span>
                       </div>
                       {a.doctor_notes && (
                         <p className="text-xs text-slate-700">
-                          <strong>Doctor Notes:</strong> {a.doctor_notes}
+                          <strong>{t('dashboards.doctorNotesLabel')}:</strong> {a.doctor_notes}
                         </p>
                       )}
                       {a.prescription_summary && (
                         <p className="text-xs text-slate-700">
-                          <strong>Advice Summary:</strong> {a.prescription_summary}
+                          <strong>{t('dashboards.adviceSummaryLabel')}:</strong>{' '}
+                          {a.prescription_summary}
                         </p>
                       )}
                       {a.cancellation_reason && (
                         <p className="text-xs text-red-700">
-                          <strong>Cancellation Reason:</strong> {a.cancellation_reason}
+                          <strong>{t('dashboards.cancellationReasonLabel')}:</strong>{' '}
+                          {a.cancellation_reason}
                         </p>
                       )}
                       <div className="flex flex-wrap items-center gap-4 pt-1">
@@ -453,13 +467,13 @@ export function PatientDashboardPage() {
                           onClick={() => setNotesModalAppt(a)}
                           className="text-xs font-semibold text-emerald-800 hover:underline cursor-pointer"
                         >
-                          {t.dashboards.viewNotes}
+                          {t('dashboards.viewNotes')}
                         </button>
                         <Link
                           to={`/consultation/${a.id}`}
                           className="text-xs font-medium text-slate-600 hover:text-emerald-800 hover:underline"
                         >
-                          Open Consultation Room →
+                          {t('dashboards.openRoomArrow')}
                         </Link>
                       </div>
                     </div>
@@ -472,21 +486,21 @@ export function PatientDashboardPage() {
           {activeTab === 'payments' && (
             <div className="bg-white border border-emerald-950/10 rounded-xl p-6 space-y-4">
               <h1 className="text-xl font-display font-bold text-slate-950">
-                {t.dashboards.payments}
+                {t('dashboards.payments')}
               </h1>
               {data.payments.length === 0 ? (
-                <p className="text-sm text-slate-600">No payment records yet.</p>
+                <p className="text-sm text-slate-600">{t('dashboards.noPayments')}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="border-b border-emerald-950/10 text-slate-500">
                       <tr>
-                        <th className="py-2.5 pr-4">Ref</th>
-                        <th className="py-2.5 pr-4">Doctor</th>
-                        <th className="py-2.5 pr-4">Schedule</th>
-                        <th className="py-2.5 pr-4">Method</th>
-                        <th className="py-2.5 pr-4">Status</th>
-                        <th className="py-2.5 text-right">Amount</th>
+                        <th className="py-2.5 pr-4">{t('dashboards.table.ref')}</th>
+                        <th className="py-2.5 pr-4">{t('dashboards.table.doctor')}</th>
+                        <th className="py-2.5 pr-4">{t('dashboards.table.schedule')}</th>
+                        <th className="py-2.5 pr-4">{t('dashboards.table.method')}</th>
+                        <th className="py-2.5 pr-4">{t('dashboards.table.status')}</th>
+                        <th className="py-2.5 text-right">{t('dashboards.table.amount')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-emerald-950/10">
@@ -500,7 +514,9 @@ export function PatientDashboardPage() {
                           <td className="py-2.5 pr-4">
                             {p.payment_method} ({p.gateway_mode})
                           </td>
-                          <td className="py-2.5 pr-4 uppercase font-semibold">{p.status}</td>
+                          <td className="py-2.5 pr-4 font-semibold">
+                            {translateEnum(t, 'status', p.status)}
+                          </td>
                           <td className="py-2.5 text-right font-mono tabular-nums font-bold">
                             ₹{p.amount}
                           </td>
@@ -517,7 +533,7 @@ export function PatientDashboardPage() {
             <div className="bg-white border border-emerald-950/10 rounded-xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h1 className="text-xl font-display font-bold text-slate-950">
-                  {t.dashboards.notifications}
+                  {t('dashboards.notifications')}
                 </h1>
                 {unreadCount > 0 && (
                   <button
@@ -525,12 +541,12 @@ export function PatientDashboardPage() {
                     onClick={handleMarkAllRead}
                     className="text-xs font-semibold text-emerald-800 hover:underline cursor-pointer"
                   >
-                    Mark all as read
+                    {t('dashboards.markAllRead')}
                   </button>
                 )}
               </div>
               {data.notifications.length === 0 ? (
-                <p className="text-sm text-slate-600">No notifications.</p>
+                <p className="text-sm text-slate-600">{t('dashboards.noNotifications')}</p>
               ) : (
                 <div className="space-y-2">
                   {data.notifications.map((n: any) => (
@@ -555,7 +571,7 @@ export function PatientDashboardPage() {
                           onClick={() => handleMarkNotificationRead(n.id)}
                           className="text-xs font-semibold text-emerald-800 hover:underline whitespace-nowrap shrink-0 cursor-pointer"
                         >
-                          Mark read
+                          {t('dashboards.markRead')}
                         </button>
                       )}
                     </div>
@@ -571,11 +587,13 @@ export function PatientDashboardPage() {
               className="bg-white border border-emerald-950/10 rounded-xl p-6 space-y-4 max-w-2xl"
             >
               <h1 className="text-xl font-display font-bold text-slate-950">
-                {t.dashboards.editProfile}
+                {t('dashboards.editProfile')}
               </h1>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Full Name</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('auth.fullName')}
+                  </label>
                   <input
                     type="text"
                     required
@@ -585,7 +603,9 @@ export function PatientDashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Phone</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('auth.phone')}
+                  </label>
                   <input
                     type="text"
                     required
@@ -595,7 +615,9 @@ export function PatientDashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Age</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('auth.age')}
+                  </label>
                   <input
                     type="number"
                     value={profileForm.age}
@@ -604,32 +626,36 @@ export function PatientDashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Gender</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('auth.gender')}
+                  </label>
                   <select
                     value={profileForm.gender}
                     onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                   >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
+                    <option value="male">{t('auth.male')}</option>
+                    <option value="female">{t('auth.female')}</option>
+                    <option value="other">{t('auth.other')}</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Village / Town
+                    {t('auth.villageTown')}
                   </label>
                   <input
                     type="text"
                     required
                     value={profileForm.villageTown}
-                    onChange={(e) => setProfileForm({ ...profileForm, villageTown: e.target.value })}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, villageTown: e.target.value })
+                    }
                     className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Preferred Language
+                    {t('auth.preferredLanguage')}
                   </label>
                   <select
                     value={profileForm.preferredLanguage}
@@ -644,18 +670,20 @@ export function PatientDashboardPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Blood Group</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('dashboards.patientProfile.bloodGroup')}
+                  </label>
                   <input
                     type="text"
                     value={profileForm.bloodGroup}
                     onChange={(e) => setProfileForm({ ...profileForm, bloodGroup: e.target.value })}
-                    placeholder="e.g. O+"
+                    placeholder={t('dashboards.patientProfile.bloodGroupPlaceholder')}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Emergency Contact
+                    {t('dashboards.patientProfile.emergencyContact')}
                   </label>
                   <input
                     type="text"
@@ -670,7 +698,7 @@ export function PatientDashboardPage() {
 
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Medical Notes / Allergies
+                  {t('dashboards.patientProfile.medicalNotes')}
                 </label>
                 <textarea
                   rows={3}
@@ -685,7 +713,7 @@ export function PatientDashboardPage() {
                 disabled={savingProfile}
                 className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg cursor-pointer"
               >
-                {savingProfile ? 'Saving...' : t.common.save}
+                {savingProfile ? t('common.saving') : t('common.save')}
               </button>
             </form>
           )}
@@ -705,7 +733,7 @@ export function PatientDashboardPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-display font-bold text-slate-950">
-                  {t.dashboards.cancelAppt}
+                  {t('dashboards.cancelAppt')}
                 </h2>
                 <p className="text-xs text-slate-600 mt-1">
                   #{cancelTarget.id} · {cancelTarget.doctor_name} ({cancelTarget.appointment_date}{' '}
@@ -716,20 +744,20 @@ export function PatientDashboardPage() {
                 type="button"
                 onClick={() => setCancelTarget(null)}
                 className="p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Reason for cancellation (optional)
+                {t('dashboards.cancelModal.reasonLabel')}
               </label>
               <textarea
                 rows={3}
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="e.g. Rescheduling to another day"
+                placeholder={t('dashboards.cancelModal.reasonPlaceholder')}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
               />
             </div>
@@ -739,14 +767,16 @@ export function PatientDashboardPage() {
                 onClick={() => setCancelTarget(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
               >
-                Keep Appointment
+                {t('dashboards.cancelModal.keepBtn')}
               </button>
               <button
                 type="submit"
                 disabled={cancelling}
                 className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg cursor-pointer disabled:opacity-60"
               >
-                {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+                {cancelling
+                  ? t('dashboards.cancelModal.cancelling')
+                  : t('dashboards.cancelModal.confirmBtn')}
               </button>
             </div>
           </form>
@@ -763,10 +793,11 @@ export function PatientDashboardPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-display font-bold text-slate-950">
-                  {t.dashboards.viewNotes}
+                  {t('dashboards.viewNotes')}
                 </h2>
                 <p className="text-xs text-slate-600 mt-1">
-                  {notesModalAppt.doctor_name} · {notesModalAppt.specialization} ·{' '}
+                  {notesModalAppt.doctor_name} ·{' '}
+                  {translateEnum(t, 'specialization', notesModalAppt.specialization)} ·{' '}
                   <span className="font-mono tabular-nums">
                     {notesModalAppt.appointment_date} {notesModalAppt.time_slot}
                   </span>
@@ -776,31 +807,37 @@ export function PatientDashboardPage() {
                 type="button"
                 onClick={() => setNotesModalAppt(null)}
                 className="p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="space-y-3 text-sm">
               <div className="p-3 rounded-lg bg-[#F8FAF9] border border-emerald-950/10">
-                <div className="text-xs font-semibold text-slate-500">Reported Symptoms</div>
+                <div className="text-xs font-semibold text-slate-500">
+                  {t('dashboards.notesModal.reportedSymptoms')}
+                </div>
                 <div className="text-slate-800 mt-1">{notesModalAppt.symptoms || '—'}</div>
               </div>
               <div className="p-3 rounded-lg bg-[#F8FAF9] border border-emerald-950/10">
-                <div className="text-xs font-semibold text-slate-500">Doctor Notes</div>
+                <div className="text-xs font-semibold text-slate-500">
+                  {t('dashboards.notesModal.doctorNotes')}
+                </div>
                 <div className="text-slate-800 mt-1">
-                  {notesModalAppt.doctor_notes || 'No consultation notes recorded yet.'}
+                  {notesModalAppt.doctor_notes || t('dashboards.notesModal.noNotes')}
                 </div>
               </div>
               <div className="p-3 rounded-lg bg-[#F8FAF9] border border-emerald-950/10">
-                <div className="text-xs font-semibold text-slate-500">Prescription / Advice Summary</div>
+                <div className="text-xs font-semibold text-slate-500">
+                  {t('dashboards.notesModal.prescriptionSummary')}
+                </div>
                 <div className="text-slate-800 mt-1">
-                  {notesModalAppt.prescription_summary || 'No advice summary recorded.'}
+                  {notesModalAppt.prescription_summary || t('dashboards.notesModal.noSummary')}
                 </div>
               </div>
               {notesModalAppt.follow_up_date && (
                 <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
-                  Recommended Follow-up Date:{' '}
+                  {t('dashboards.notesModal.followUpDate')}:{' '}
                   <span className="font-mono font-semibold">{notesModalAppt.follow_up_date}</span>
                 </div>
               )}
@@ -810,14 +847,14 @@ export function PatientDashboardPage() {
                 to={`/consultation/${notesModalAppt.id}`}
                 className="px-4 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg"
               >
-                Open Consultation Room
+                {t('dashboards.openRoom')}
               </Link>
               <button
                 type="button"
                 onClick={() => setNotesModalAppt(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 rounded-lg cursor-pointer"
               >
-                {t.common.close}
+                {t('common.close')}
               </button>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { Footer } from '../components/Footer';
 import { SafeImage } from '../components/SafeImage';
 import { useLanguage } from '../context/LanguageContext';
 import { api, getApiErrorMessage } from '../services/api';
+import { translateEnum } from '../utils/i18nHelpers';
 
 const ARTICLE_CATEGORIES = [
   'all',
@@ -40,7 +41,7 @@ export function HealthTipsPage() {
       const res = await api.get('/articles', { params });
       setArticles(res.data.articles || []);
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      setError(getApiErrorMessage(err, t('common.genericError')));
     } finally {
       setLoading(false);
     }
@@ -57,16 +58,16 @@ export function HealthTipsPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-display font-bold text-slate-950">
-              {t.healthTipsPage.title}
+              {t('healthTipsPage.title')}
             </h1>
-            <p className="text-sm text-slate-600 max-w-2xl">{t.healthTipsPage.subtitle}</p>
+            <p className="text-sm text-slate-600 max-w-2xl">{t('healthTipsPage.subtitle')}</p>
           </div>
           <button
             type="button"
             onClick={() => setArticleLang(lang)}
             className="px-3.5 py-2 text-xs font-semibold text-emerald-900 bg-white border border-emerald-950/15 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
           >
-            {t.healthTipsPage.matchLanguage} ({lang.toUpperCase()})
+            {t('healthTipsPage.matchLanguage')} ({lang.toUpperCase()})
           </button>
         </div>
 
@@ -80,7 +81,7 @@ export function HealthTipsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && fetchArticles()}
-                placeholder={t.healthTipsPage.searchPlaceholder}
+                placeholder={t('healthTipsPage.searchPlaceholder')}
                 className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
               />
             </div>
@@ -90,7 +91,7 @@ export function HealthTipsPage() {
               onChange={(e) => setArticleLang(e.target.value)}
               className="md:col-span-3 px-3 py-2 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
             >
-              <option value="all">{t.common.all}</option>
+              <option value="all">{t('common.all')}</option>
               <option value="en">English</option>
               <option value="te">తెలుగు (Telugu)</option>
               <option value="hi">हिन्दी (Hindi)</option>
@@ -101,7 +102,7 @@ export function HealthTipsPage() {
               onClick={fetchArticles}
               className="md:col-span-2 px-4 py-2 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg cursor-pointer"
             >
-              {t.common.search}
+              {t('common.search')}
             </button>
           </div>
 
@@ -117,7 +118,9 @@ export function HealthTipsPage() {
                     : 'bg-[#F8FAF9] text-slate-700 border-emerald-950/10 hover:border-emerald-700/40'
                 }`}
               >
-                {cat === 'all' ? 'All Categories' : cat}
+                {cat === 'all'
+                  ? t('healthTipsPage.allCategories')
+                  : translateEnum(t, 'articleCategory', cat)}
               </button>
             ))}
           </div>
@@ -137,7 +140,7 @@ export function HealthTipsPage() {
           </div>
         ) : articles.length === 0 ? (
           <div className="p-10 bg-white border border-emerald-950/10 rounded-xl text-center text-sm text-slate-600">
-            No articles matched your filter. Try selecting All Article Languages or All Categories.
+            {t('healthTipsPage.noMatch')}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -156,7 +159,9 @@ export function HealthTipsPage() {
                   </div>
                   <div className="p-5 space-y-2">
                     <div className="text-xs text-slate-500">
-                      <span className="text-emerald-800 font-medium">{art.category}</span>
+                      <span className="text-emerald-800 font-medium">
+                        {translateEnum(t, 'articleCategory', art.category)}
+                      </span>
                       <span className="mx-1.5" aria-hidden="true">
                         ·
                       </span>
@@ -176,7 +181,7 @@ export function HealthTipsPage() {
                     onClick={() => setActiveArticle(art)}
                     className="text-xs font-semibold text-emerald-800 hover:underline cursor-pointer"
                   >
-                    Read Full Guide →
+                    {t('healthTipsPage.readFullGuide')}
                   </button>
                 </div>
               </article>
@@ -192,11 +197,15 @@ export function HealthTipsPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-xs text-slate-500">
-                  <span className="text-emerald-800 font-semibold">{activeArticle.category}</span>
+                  <span className="text-emerald-800 font-semibold">
+                    {translateEnum(t, 'articleCategory', activeArticle.category)}
+                  </span>
                   <span className="mx-1.5">·</span>
-                  <span>Published {activeArticle.published_date}</span>
+                  <span>
+                    {t('healthTipsPage.published')} {activeArticle.published_date}
+                  </span>
                   <span className="mx-1.5">·</span>
-                  <span>Reviewed Educational Guide</span>
+                  <span>{t('healthTipsPage.reviewedGuide')}</span>
                 </div>
                 <h2 className="text-xl font-display font-bold text-slate-950 mt-1">
                   {activeArticle.title}
@@ -206,7 +215,7 @@ export function HealthTipsPage() {
                 type="button"
                 onClick={() => setActiveArticle(null)}
                 className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"
-                aria-label="Close article"
+                aria-label={t('healthTipsPage.closeArticle')}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -226,8 +235,7 @@ export function HealthTipsPage() {
             </div>
 
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900">
-              Medical Disclaimer: This educational guide is reviewed for general community awareness
-              and does not replace professional diagnosis or emergency medical treatment.
+              {t('healthTipsPage.medicalDisclaimer')}
             </div>
           </div>
         </div>

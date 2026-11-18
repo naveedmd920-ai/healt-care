@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Calendar, Clock, CheckCircle2, AlertTriangle, Video, Phone } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SafeImage } from '../components/SafeImage';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { api, getApiErrorMessage } from '../services/api';
+import { translateEnum, translateLanguagesList } from '../utils/i18nHelpers';
 
 function getTodayIso(): string {
   return new Date().toISOString().split('T')[0];
@@ -14,6 +16,7 @@ function getTodayIso(): string {
 export function DoctorDetailAndBookingPage() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [doctor, setDoctor] = useState<any>(null);
@@ -43,6 +46,7 @@ export function DoctorDetailAndBookingPage() {
 
   useEffect(() => {
     setLoading(true);
+    setError('');
     Promise.all([
       api.get(`/doctors/${id}`),
       api.get('/config/capabilities').catch(() => ({ data: { paymentGateway: 'simulation' } })),
@@ -51,7 +55,7 @@ export function DoctorDetailAndBookingPage() {
         setDoctor(docRes.data.doctor);
         setGatewayMode(capRes.data?.paymentGateway || 'simulation');
       })
-      .catch((err) => setError(getApiErrorMessage(err)))
+      .catch((err) => setError(getApiErrorMessage(err, t('booking.doctorNotFound'))))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -81,15 +85,15 @@ export function DoctorDetailAndBookingPage() {
       return;
     }
     if (user.role !== 'patient') {
-      setBookingError('Please sign in with a Patient account to book an appointment.');
+      setBookingError(t('booking.patientOnlyError'));
       return;
     }
     if (!selectedSlot) {
-      setBookingError('Please select an available time slot.');
+      setBookingError(t('booking.selectSlotError'));
       return;
     }
     if (symptoms.trim().length < 5) {
-      setBookingError('Please briefly describe your symptoms (at least 5 characters).');
+      setBookingError(t('booking.symptomsLengthError'));
       return;
     }
 
@@ -108,7 +112,7 @@ export function DoctorDetailAndBookingPage() {
       setBookingSuccess(res.data.booking);
       await loadSlots(selectedDate);
     } catch (err) {
-      setBookingError(getApiErrorMessage(err));
+      setBookingError(getApiErrorMessage(err, t('common.genericError')));
     } finally {
       setBookingLoading(false);
     }
@@ -120,11 +124,11 @@ export function DoctorDetailAndBookingPage() {
       <main className="flex-1 max-w-[1100px] w-full mx-auto px-4 sm:px-6 py-10">
         {loading ? (
           <div className="p-8 bg-white rounded-xl border border-emerald-950/10 text-sm text-slate-600">
-            Loading doctor profile...
+            {t('booking.loadingProfile')}
           </div>
         ) : error || !doctor ? (
           <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
-            {error || 'Doctor not found.'}
+            {error || t('booking.doctorNotFound')}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -142,53 +146,63 @@ export function DoctorDetailAndBookingPage() {
                   </h1>
                   <p className="text-sm text-slate-600">{doctor.qualification}</p>
                   <p className="text-xs font-medium text-emerald-800 mt-1">
-                    {doctor.specialization} · {doctor.experience_years} years experience
+                    {translateEnum(t, 'specialization', doctor.specialization)} ·{' '}
+                    {doctor.experience_years} {t('common.yearsExp')}
                   </p>
                 </div>
               </div>
 
               <div className="p-4 rounded-lg bg-[#F8FAF9] border border-emerald-950/10 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Consultation Fee</span>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-600">{t('booking.consultationFee')}</span>
                   <span className="font-bold font-mono tabular-nums text-slate-900">
                     ₹{doctor.consultation_fee}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Direct Operating Cost</span>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-600">{t('booking.operatingCost')}</span>
                   <span className="font-mono tabular-nums text-slate-700">
                     ₹{doctor.operating_cost}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Languages</span>
-                  <span className="text-slate-900">{doctor.languages_spoken}</span>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-600">{t('booking.languages')}</span>
+                  <span className="text-slate-900 text-right">
+                    {translateLanguagesList(t, doctor.languages_spoken)}
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Clinic Desk</span>
-                  <span className="text-slate-900">{doctor.clinic_location || 'Telemedicine'}</span>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-600">{t('booking.clinicDesk')}</span>
+                  <span className="text-slate-900 text-right">
+                    {doctor.clinic_location || t('common.telemedicine')}
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-sm font-semibold text-slate-900">About Doctor</h2>
+                <h2 className="text-sm font-semibold text-slate-900">{t('booking.aboutDoctor')}</h2>
                 <p className="text-sm text-slate-600 leading-relaxed">{doctor.bio}</p>
                 {doctor.is_sample ? (
                   <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-                    Demonstration Notice: This is a clearly labelled sample doctor profile created
-                    for platform evaluation.
+                    {t('booking.sampleNotice')}
                   </p>
                 ) : null}
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-sm font-semibold text-slate-900">Weekly Schedule</h2>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  {t('booking.weeklySchedule')}
+                </h2>
                 <div className="divide-y divide-emerald-950/10 border border-emerald-950/10 rounded-lg text-xs">
                   {(doctor.availability || []).map((av: any) => (
                     <div key={av.day_of_week} className="px-3 py-2 flex justify-between">
-                      <span className="font-medium text-slate-800">{av.day_of_week}</span>
+                      <span className="font-medium text-slate-800">
+                        {translateEnum(t, 'day', av.day_of_week)}
+                      </span>
                       <span className="font-mono tabular-nums text-slate-600">
-                        {av.is_available ? `${av.start_time} – ${av.end_time}` : 'Unavailable'}
+                        {av.is_available
+                          ? `${av.start_time} – ${av.end_time}`
+                          : t('booking.unavailable')}
                       </span>
                     </div>
                   ))}
@@ -196,16 +210,13 @@ export function DoctorDetailAndBookingPage() {
               </div>
             </section>
 
-            {/* Right: Real-Time Appointment Booking & Payment Simulation */}
+            {/* Right: Appointment Booking & Payment Simulation */}
             <section className="lg:col-span-7 bg-white border border-emerald-950/10 rounded-xl p-6 space-y-6">
               <div>
                 <h2 className="text-xl font-display font-bold text-slate-950">
-                  Book Consultation Appointment
+                  {t('booking.bookHeading')}
                 </h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Select a date and available slot. Confirmed slots are locked in the database to
-                  prevent double booking.
-                </p>
+                <p className="text-sm text-slate-600 mt-1">{t('booking.bookSubheading')}</p>
               </div>
 
               {bookingSuccess ? (
@@ -214,20 +225,22 @@ export function DoctorDetailAndBookingPage() {
                     <CheckCircle2 className="w-6 h-6 text-emerald-700 shrink-0 mt-0.5" />
                     <div>
                       <h3 className="text-base font-bold text-emerald-950">
-                        Booking Confirmed (#{bookingSuccess.appointmentId})
+                        {t('booking.bookingConfirmed', { id: bookingSuccess.appointmentId })}
                       </h3>
                       <p className="text-sm text-emerald-900 mt-1">
-                        Payment Reference:{' '}
+                        {t('booking.paymentRef')}:{' '}
                         <span className="font-mono font-semibold">
                           {bookingSuccess.transactionRef}
                         </span>{' '}
-                        ({bookingSuccess.gatewayMode === 'simulation'
-                          ? 'Development Payment Simulation'
-                          : 'Razorpay'}
+                        (
+                        {bookingSuccess.gatewayMode === 'simulation'
+                          ? t('booking.simGateway')
+                          : t('booking.razorpayGateway')}
                         )
                       </p>
                       <p className="text-xs text-emerald-800 mt-1">
-                        Room ID: <span className="font-mono">{bookingSuccess.roomId}</span>
+                        {t('booking.roomId')}:{' '}
+                        <span className="font-mono">{bookingSuccess.roomId}</span>
                       </p>
                     </div>
                   </div>
@@ -236,13 +249,13 @@ export function DoctorDetailAndBookingPage() {
                       to={`/consultation/${bookingSuccess.appointmentId}`}
                       className="px-4 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg"
                     >
-                      Open Consultation Room
+                      {t('booking.openRoom')}
                     </Link>
                     <Link
                       to="/patient/dashboard"
                       className="px-4 py-2 text-xs font-semibold text-emerald-900 bg-white border border-emerald-700/20 rounded-lg"
                     >
-                      Go to Patient Dashboard
+                      {t('booking.goToDashboard')}
                     </Link>
                   </div>
                 </div>
@@ -250,12 +263,12 @@ export function DoctorDetailAndBookingPage() {
                 <div className="space-y-5">
                   {!user && (
                     <div className="p-3.5 rounded-lg bg-teal-50 border border-teal-200 text-xs text-teal-950 flex flex-wrap items-center justify-between gap-2">
-                      <span>Sign in as a Patient to lock a time slot and complete booking.</span>
+                      <span>{t('booking.signInNotice')}</span>
                       <Link
                         to={`/login?redirect=${encodeURIComponent(`/doctors/${id}`)}`}
                         className="px-3 py-1.5 font-semibold text-white bg-emerald-700 rounded-md"
                       >
-                        Login to Book
+                        {t('booking.loginToBook')}
                       </Link>
                     </div>
                   )}
@@ -271,7 +284,7 @@ export function DoctorDetailAndBookingPage() {
                   <div>
                     <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 mb-2">
                       <Calendar className="w-4 h-4 text-emerald-700" />
-                      <span>1. Select Appointment Date</span>
+                      <span>{t('booking.step1')}</span>
                     </label>
                     <input
                       type="date"
@@ -287,15 +300,16 @@ export function DoctorDetailAndBookingPage() {
                     <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 mb-2">
                       <Clock className="w-4 h-4 text-emerald-700" />
                       <span>
-                        2. Available Time Slots {slotData?.dayName ? `(${slotData.dayName})` : ''}
+                        {t('booking.step2')}{' '}
+                        {slotData?.dayName ? `(${translateEnum(t, 'day', slotData.dayName)})` : ''}
                       </span>
                     </div>
 
                     {loadingSlots ? (
-                      <div className="text-xs text-slate-500">Checking live slot availability...</div>
+                      <div className="text-xs text-slate-500">{t('booking.checkingSlots')}</div>
                     ) : !slotData?.available || slotData.slots.length === 0 ? (
                       <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                        Doctor has no open slots on this day. Please pick another date.
+                        {t('booking.noOpenSlots')}
                       </div>
                     ) : (
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -323,9 +337,9 @@ export function DoctorDetailAndBookingPage() {
                   {/* Step 3: Mode & Symptoms */}
                   <div className="space-y-3">
                     <label className="block text-sm font-semibold text-slate-900">
-                      3. Consultation Mode & Symptoms
+                      {t('booking.step3')}
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() => setConsultationMode('video')}
@@ -336,7 +350,7 @@ export function DoctorDetailAndBookingPage() {
                         }`}
                       >
                         <Video className="w-4 h-4" />
-                        <span>Video Consultation</span>
+                        <span>{t('booking.videoConsultation')}</span>
                       </button>
                       <button
                         type="button"
@@ -348,7 +362,7 @@ export function DoctorDetailAndBookingPage() {
                         }`}
                       >
                         <Phone className="w-4 h-4" />
-                        <span>Audio Call (Low Bandwidth)</span>
+                        <span>{t('booking.audioCall')}</span>
                       </button>
                     </div>
 
@@ -356,7 +370,7 @@ export function DoctorDetailAndBookingPage() {
                       rows={3}
                       value={symptoms}
                       onChange={(e) => setSymptoms(e.target.value)}
-                      placeholder="Describe symptoms, duration, or current medicines..."
+                      placeholder={t('booking.symptomsPlaceholder')}
                       className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-emerald-950/15 bg-[#F8FAF9]"
                     />
                   </div>
@@ -365,10 +379,10 @@ export function DoctorDetailAndBookingPage() {
                   <div className="p-4 rounded-xl bg-[#F8FAF9] border border-emerald-950/10 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-slate-900">
-                        4. Consultation Payment (
+                        {t('booking.step4')} (
                         {gatewayMode === 'razorpay'
-                          ? 'Razorpay Configured'
-                          : 'Development Simulation Mode'}
+                          ? t('booking.razorpayConfigured')
+                          : t('booking.devSimMode')}
                         )
                       </span>
                       <span className="text-base font-bold font-mono tabular-nums text-emerald-800">
@@ -377,16 +391,22 @@ export function DoctorDetailAndBookingPage() {
                     </div>
                     <p className="text-xs text-slate-600">
                       {gatewayMode === 'razorpay'
-                        ? `Razorpay gateway active (₹${doctor.consultation_fee} fee · ₹${doctor.operating_cost} direct operating cost).`
-                        : `Razorpay credentials are not configured in this environment. Payments run in clearly labelled Development Simulation mode (₹${doctor.consultation_fee} fee · ₹${doctor.operating_cost} direct operating cost). No card details are collected or stored.`}
+                        ? t('booking.razorpayActiveDesc', {
+                            fee: doctor.consultation_fee,
+                            cost: doctor.operating_cost,
+                          })
+                        : t('booking.simModeDesc', {
+                            fee: doctor.consultation_fee,
+                            cost: doctor.operating_cost,
+                          })}
                     </p>
                     <select
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value)}
                       className="w-full px-3 py-2 text-xs rounded-lg border border-emerald-950/15 bg-white"
                     >
-                      <option value="UPI Simulation">UPI Simulation (PhonePe / GPay Demo)</option>
-                      <option value="Wallet Simulation">Rural Health Voucher Simulation</option>
+                      <option value="UPI Simulation">{t('booking.upiSim')}</option>
+                      <option value="Wallet Simulation">{t('booking.walletSim')}</option>
                     </select>
 
                     <div className="flex flex-wrap gap-3 pt-1">
@@ -397,8 +417,8 @@ export function DoctorDetailAndBookingPage() {
                         className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 rounded-lg cursor-pointer"
                       >
                         {bookingLoading
-                          ? 'Processing...'
-                          : `Confirm & Pay ₹${doctor.consultation_fee} (Simulated)`}
+                          ? t('booking.processing')
+                          : t('booking.confirmAndPay', { fee: doctor.consultation_fee })}
                       </button>
                       <button
                         type="button"
@@ -406,7 +426,7 @@ export function DoctorDetailAndBookingPage() {
                         onClick={() => handleBook('failure')}
                         className="px-4 py-2.5 text-xs font-semibold text-red-700 bg-white border border-red-200 hover:bg-red-50 rounded-lg cursor-pointer"
                       >
-                        Simulate Payment Failure
+                        {t('booking.simulateFailure')}
                       </button>
                     </div>
                   </div>
